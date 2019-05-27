@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 ####################################################################################################
 #
 #   MIT License
@@ -24,220 +24,296 @@
 #   SOFTWARE.
 #
 ####################################################################################################
-#
-# HISTORY
-#
-#	Version: 1.4
-#
-#	- 04/29/2016 Created by Phil Redfern
-#   - 05/01/2016 Updated by Phil Redfern, added upload verification and local Logging.
-#   - 05/02/2016 Updated by Phil Redfern and John Ross, added keychain update and fixed a bug where no stored LAPS password would cause the process to hang.
-#   - 05/06/2016 Updated by Phil Redfern, improved local logging and increased random passcode length.
-#   - 05/11/2016 Updated by Phil Redfern, removed ambiguous characters from the password generator.
-#
-#   - This script will randomize the password of the specified user account and post the password to the LAPS Extention Attribute in Casper.
-#
+
+#-
+#- Usage
+#-  TBD
+#-
+
+if [ "$#" -eq 0 ]; then
+    /usr/bin/grep ^#- "$0" | /usr/bin/cut -c 4-
+    exit 0
+fi
+
 ####################################################################################################
-#
-# DEFINE VARIABLES & READ IN PARAMETERS
-#
+# FUNCTIONS
 ####################################################################################################
+function scriptLogging(){
+    # `scriptLogging "your message"` then logging file and put it std-out.
+    # `scriptLogging "your message" 2` then logging file and put it std-err.
+    # Other than 2 is ignored.
+    local logfile scriptname timestamp label mode
+    logfile="/Library/Logs/jamf-laps.$( /bin/data +%F).log"
+    scriptname="$( /usr/bin/basename "$0" )"
+    timestamp="$( /bin/date "+%F %T" )"
+    mode="$2"
+    case "${mode:-1}" in
+        2 )
+            label="[error]"
+            echo "$timestamp $scriptname $label $1" | /usr/bin/tee -a "$logfile" >&2
+            ;;
+        * )
+            label="[info]"
+            echo "$timestamp $scriptname $label $1" | /usr/bin/tee -a "$logfile"
+            ;;
+    esac
+}
 
-# HARDCODED VALUES SET HERE
-apiUser=""
-apiPass=""
-resetUser=""
+function decryptString() {
+    local string salt passphrase r errmsgfile errmsg
+    string="$1"
+    salt="$2"
+    passphrase="$3"
+    errmsgfile="$( /usr/bin/mktemp )"
+    echo "$string" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passphrase" 2> "$errmsgfile"
+    r="${PIPESTATUS[1]}"
+    if [ "$r" -ne 0 ]; then
+        errmsg="$( /bin/cat "$errmsgfile" )"
+        scriptLogging "Decrypt failed: $errmsg" 2
+    fi
+    /bin/rm -f "$errmsgfile"
+}
 
-# CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 4 AND, IF SO, ASSIGN TO "apiUser"
-if [ "$4" != "" ] && [ "$apiUser" == "" ];then
-apiUser=$4
-fi
+function retrievePassword(){
+    local ua up uuid attr response httpStatus
+    ua="$1"
+    up="$2"
+    udid="$3"
+    attr="$4"
 
-# CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 5 AND, IF SO, ASSIGN TO "apiPass"
-if [ "$5" != "" ] && [ "$apiPass" == "" ];then
-apiPass=$5
-fi
+    response="$( /usr/bin/curl -s -f -u "${ua}:${up}" -H "Accept: application/xml" \
+                "$apiURL/JSSResource/computers/udid/$udid/subset/extension_attributes" \
+                --write-out "HTTPSTATUS:%{http_code}" )"
 
-# CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 6 AND, IF SO, ASSIGN TO "resetUser"
-if [ "$6" != "" ] && [ "$resetUser" == "" ];then
-resetUser=$6
-fi
+    httpStatus=$( echo "$response" | /usr/bin/tr -d '\n' | /usr/bin/sed -e 's/.*HTTPSTATUS://')
+    if [ "$httpStatus" -ne 200 ];then
+        scriptLogging "Cannot get stored password. JSS api call is failed with HTTP status is $httpStatus." 2
+        exit 1
+    fi
 
-apiURL="https://jss.acme.com:8443"
-LogLocation="/Library/Logs/Casper_LAPS.log"
+    echo "$response" | /usr/bin/sed -e 's/HTTPSTATUS\:.*//g' | \
+        /usr/bin/xpath "//extension_attribute[name=\"$attr\"]/value/text()" 2>/dev/null
+}
 
-newPass=$(openssl rand -base64 10 | tr -d OoIi1lLS | head -c12;echo)
-####################################################################
-#
-#            ┌─── openssl is used to create
-#            │	a random Base64 string
-#            │                    ┌── remove ambiguous characters
-#            │                    │
-# ┌──────────┴──────────┐	  ┌───┴────────┐
-# openssl rand -base64 10 | tr -d OoIi1lLS | head -c12;echo
-#                                            └──────┬─────┘
-#                                                   │
-#             prints the first 12 characters  ──────┘
-#             of the randomly generated string
-#
+function uploadPassword(){
+    local ua up uuid attr response httpStatus httpBody
+    ua="$1"
+    up="$2"
+    udid="$3"
+    attr="$4"
+
+
+
+    /usr/bin/curl -s -u ${apiUser}:${apiPass} -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/$udid"
+
+    sleep 1
+
+    lapsPasswordEncrypted=$(curl -s -f -u $apiUser:$apiPass -H "Accept: application/xml" $apiURL/JSSResource/computers/udid/$udid/subset/extension_attributes | xpath "//extension_attribute[name=$extAttName]" 2>/dev/null | awk -F'<value>|</value>' '{print $2}')
+
+    lapsPasswordDecrypted=$(decryptString "${lapsPasswordEncrypted}" "${salt}" "${K}")
+
+}
+
+function changePassword(){
+    local ua old new result
+    ua="$1"
+    old="$2"
+    new="$3"
+    /usr/sbin/sysadminctl -adminUser "$ua" -adminPassword "$old" -resetPasswordFor "$ua" -newPassword "$new"
+    result=$?
+    if [ "$result" -ne 0 ]; then
+        scriptLogging "Failed to change password of $ua" 2
+        exit 1
+    fi
+
+    /usr/bin/dscl /Local/Default -authonly "$ua" "$new" 2> /dev/null
+    result=$?
+    if [ "$result" -eq 0 ]; then
+        scriptLogging "Password of $ua has changed in success."
+    else
+        scriptLogging "Given password of $ua is wrong. This is serious." 2
+        exit 1
+    fi
+}
+
 ####################################################################################################
-#
-# SCRIPT CONTENTS - DO NOT MODIFY BELOW THIS LINE
-#
+# REQUIRMENTS
 ####################################################################################################
-
-udid=$(/usr/sbin/system_profiler SPHardwareDataType | /usr/bin/awk '/Hardware UUID:/ { print $3 }')
-xmlString="<?xml version=\"1.0\" encoding=\"UTF-8\"?><computer><extension_attributes><extension_attribute><name>LAPS</name><value>$newPass</value></extension_attribute></extension_attributes></computer>"
-extAttName="\"LAPS\""
-oldPass=$(curl -s -f -u $apiUser:$apiPass -H "Accept: application/xml" $apiURL/JSSResource/computers/udid/$udid/subset/extension_attributes | xpath "//extension_attribute[name=$extAttName]" 2>&1 | awk -F'<value>|</value>' '{print $2}')
-
-# Logging Function for reporting actions
-ScriptLogging(){
-
-DATE=`date +%Y-%m-%d\ %H:%M:%S`
-LOG="$LogLocation"
-
-echo "$DATE" " $1" >> $LOG
-}
-
-ScriptLogging "======== Starting LAPS Update ========"
-ScriptLogging "Checking parameters."
-
-# Verify parameters are present
-if [ "$apiUser" == "" ];then
-    ScriptLogging "Error:  The parameter 'API Username' is blank.  Please specify a user."
-    echo "Error:  The parameter 'API Username' is blank.  Please specify a user."
-    ScriptLogging "======== Aborting LAPS Update ========"
+jamfPlist=/Library/Preferences/com.jamfsoftware.jamf.plist
+if [ -f "$jamfPlist" ]; then
+    apiURL="$( /usr/libexec/PlistBuddy -c "print jss_url" "$jamfPlist" )"
+fi
+if [ -z "$apiURL" ]; then
+    scriptLogging "Failed to get api URL from $jamfPlist" 2
     exit 1
 fi
 
-if [ "$apiPass" == "" ];then
-    ScriptLogging "Error:  The parameter 'API Password' is blank.  Please specify a password."
-    echo "Error:  The parameter 'API Password' is blank.  Please specify a password."
-    ScriptLogging "======== Aborting LAPS Update ========"
+HWUUID="$( /usr/sbin/system_profiler SPHardwareDataType | /usr/bin/awk '/Hardware UUID:/ { print $3 }' )"
+
+####################################################################################################
+#- Jamf Parameters
+####################################################################################################
+#- - Parameter  4: API User Name
+apiUser="$4"
+if [ -z "$apiUser" ]; then
+    scriptLogging "API User was not given via parameter 4" 2
     exit 1
 fi
 
-if [ "$resetUser" == "" ];then
-    ScriptLogging "Error:  The parameter 'User to Reset' is blank.  Please specify a user to reset."
-    echo "Error:  The parameter 'User to Reset' is blank.  Please specify a user to reset."
-    ScriptLogging "======== Aborting LAPS Update ========"
+#- - Parameter  5: API User Password. It must be encrypted.
+apiEncryptedPass="$5"
+if [ -z "$apiEncryptedPass" ]; then
+    scriptLogging "API User's passowrd was not given via parameter 5." 2
     exit 1
 fi
 
-# Verify resetUser is a local user on the computer
-checkUser=`dseditgroup -o checkmember -m $resetUser localaccounts | awk '{ print $1 }'`
-
-if [[ "$checkUser" = "yes" ]];then
-    echo "$resetUser is a local user on the Computer"
-else
-    echo "Error: $checkUser is not a local user on the Computer!"
-    ScriptLogging "======== Aborting LAPS Update ========"
+#- - Parameter  6: LAPS User Name
+lapsUserName="$6"
+if [ -z "$lapsUserName" ]; then
+    scriptLogging "LAPS user name was not given via parameter 6." 2
+    exit 1
+fi
+msg="$( /usr/bin/dseditgroup -o checkmember -m "$lapsUserName" localaccounts 2>&1 )"
+result=$?
+if [ "$result" -ne 0 ]; then
+    scriptLogging "${msg}. Return Code (dserr) is ${result}." 2
     exit 1
 fi
 
-ScriptLogging "Parameters Verified."
-
-# Identify the location of the jamf binary for the jamf_binary variable.
-CheckBinary (){
-# Identify location of jamf binary.
-jamf_binary=`/usr/bin/which jamf`
-
-if [[ "$jamf_binary" == "" ]] && [[ -e "/usr/sbin/jamf" ]] && [[ ! -e "/usr/local/bin/jamf" ]]; then
-jamf_binary="/usr/sbin/jamf"
-elif [[ "$jamf_binary" == "" ]] && [[ ! -e "/usr/sbin/jamf" ]] && [[ -e "/usr/local/bin/jamf" ]]; then
-jamf_binary="/usr/local/bin/jamf"
-elif [[ "$jamf_binary" == "" ]] && [[ -e "/usr/sbin/jamf" ]] && [[ -e "/usr/local/bin/jamf" ]]; then
-jamf_binary="/usr/local/bin/jamf"
-fi
-
-ScriptLogging "JAMF Binary is $jamf_binary"
-}
-
-# Verify the current User Password in Casper LAPS
-CheckOldPassword (){
-ScriptLogging "Verifying password stored in LAPS."
-
-if [ "$oldPass" == "" ];then
-    ScriptLogging "No Password is stored in LAPS."
-    echo "No Password is stored in LAPS."
-    oldPass=None
-else
-    ScriptLogging "A Password was found in LAPS."
-    echo "A Password was found in LAPS."
-fi
-
-passwdA=`dscl /Local/Default -authonly $resetUser $oldPass`
-
-if [ "$passwdA" == "" ];then
-    ScriptLogging "Password stored in LAPS is correct for $resetUser."
-    echo "Password stored in LAPS is correct for $resetUser."
-else
-    ScriptLogging "Error: Password stored in LAPS is not valid for $resetUser."
-    echo "Error: Password stored in LAPS is not valid for $resetUser."
-    oldPass=""
-fi
-}
-
-# Update the User Password
-RunLAPS (){
-ScriptLogging "Running LAPS..."
-if [ "$oldPass" == "" ];then
-    ScriptLogging "Current password not available, proceeding with forced update for $resetUser."
-    echo "Current password not available, proceeding with forced update."
-    $jamf_binary resetPassword -username $resetUser -password $newPass
-else
-    ScriptLogging "Updating password for $resetUser."
-    echo "Updating password for $resetUser."
-    $jamf_binary resetPassword -updateLoginKeychain -username $resetUser -oldPassword $oldPass -password $newPass
-fi
-}
-
-# Verify the new User Password
-CheckNewPassword (){
-ScriptLogging "Verifying new password for $resetUser."
-passwdB=`dscl /Local/Default -authonly $resetUser $newPass`
-
-if [ "$passwdB" == "" ];then
-    ScriptLogging "New password for $resetUser is verified."
-    echo "New password for $resetUser is verified."
-else
-    ScriptLogging "Error: Password reset for $resetUser was not successful!"
-    echo "Error: Password reset for $resetUser was not successful!"
-    ScriptLogging "======== Aborting LAPS Update ========"
+#- - Parameter  7: Initial Encrypted Password of LAPS User
+initialEncryptedPassForLAPSUser="$7"
+if [ -z "$initialEncryptedPassForLAPSUser" ]; then
+    scriptLogging "Initial Encrypted Password of LAPS User was not given via parameter 7." 2
     exit 1
 fi
-}
 
-# Update the LAPS Extention Attribute
-UpdateAPI (){
-ScriptLogging "Recording new password for $resetUser into LAPS."
-/usr/bin/curl -s -u ${apiUser}:${apiPass} -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/$udid"
-
-sleep 1
-
-LAPSpass=$(curl -s -f -u $apiUser:$apiPass -H "Accept: application/xml" $apiURL/JSSResource/computers/udid/$udid/subset/extension_attributes | xpath "//extension_attribute[name=$extAttName]" 2>&1 | awk -F'<value>|</value>' '{print $2}')
-
-ScriptLogging "Verifying LAPS password for $resetUser."
-passwdC=`dscl /Local/Default -authonly $resetUser $LAPSpass`
-if [ "$passwdC" == "" ];then
-    ScriptLogging "LAPS password for $resetUser is verified."
-    echo "LAPS password for $resetUser is verified."
-else
-    ScriptLogging "Error: LAPS password for $resetUser is not correct!"
-    echo "Error: LAPS password for $resetUser is not correct!"
-    ScriptLogging "======== Aborting LAPS Update ========"
-exit 1
+#- - Parameter  8: Extend Attribute Name.
+extAttName="$8"
+if [ -z "$extAttName" ]; then
+    scriptLogging "Extend Attribute Name was not given via parameter 8." 2
+    exit 1
 fi
-}
 
-CheckBinary
-CheckOldPassword
-RunLAPS
-CheckNewPassword
-UpdateAPI
+#- - Parameter  9: Salt & Passphrase for decrypt API user password.
+#-                 format:: salt:passphrase
+apiSaltPass="$9"
+if [ -n "$apiSaltPass" ]; then
+    saltAPI="$( echo "$apiSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $1}' )"
+    passAPI="$( echo "$apiSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $2}' )"
+else
+    scriptLogging "Salt & Passphrase for decrypt API user password was not given via parameter 9" 2
+    exit 1
+fi
+if [ -z "$saltAPI" ] || [ -z "$passAPI" ]; then
+    scriptLogging "Invalit string format given via parameter 9" 2
+    exit 1
+fi
 
-ScriptLogging "======== LAPS Update Finished ========"
-echo "LAPS Update Finished."
+#- - Parameter 10: Salt & Passphrase for decrypt LAPS user password.
+#-                 format:: salt:passphrase
+lapsSaltPass="${10}"
+if [ -n "$lapsSaltPass" ]; then
+    saltLaps="$( echo "$lapsSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $1}' )"
+    passLaps="$( echo "$lapsSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $2}' )"
+else
+    scriptLogging "Salt & Passphrase for decrypt LAPS user password was not given via parameter 10" 2
+    exit 1
+fi
+if [ -z "$saltLaps" ] || [ -z "$passLaps" ]; then
+    scriptLogging "Invalit string format given via parameter 10" 2
+    exit 1
+fi
 
-exit 0
+#- - Parameter 11: Salt & Passphrase for decrypt LAPS user's initial password.
+#-                 format:: salt:passphrase
+initialLapsSaltPass="${11}"
+if [ -n "$initialLapsSaltPass" ]; then
+    initSaltLaps="$( echo "$initialLapsSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $1}' )"
+    initPassLaps="$( echo "$initialLapsSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $2}' )"
+else
+    scriptLogging "Salt & Passphrase for decrypt LAPS user's initial password was not given via parameter 11" 2
+    exit 1
+fi
+if [ -z "$initSaltLaps" ] || [ -z "$initPassLaps" ]; then
+    scriptLogging "Invalit string format given via parameter 11" 2
+    exit 1
+fi
+
+####################################################################################################
+# Decode API user Password
+apiPass="$( decryptString "$apiEncryptedPass" "$saltAPI" "$passAPI" )"
+if [ -z "$retrievedPassword" ]; then
+    scriptLogging "Failed to decrypt API user's password" 2
+    exit 1
+fi
+
+####################################################################################################
+# Retrieve LAPS user password from Extent Attribute
+previousEncryptedPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extAttName" )"
+if [ -n "$previousEncryptedPassword" ]; then
+    scriptLogging "Retrieved previous password is $previousEncryptedPassword  (encrypted)."
+    retrievedPassword="$( decryptString "$previousEncryptedPassword" "$saltLaps" "$passLaps" )"
+else
+    scriptLogging "Could not get previous password. Try initial password for ${lapsUserName}."
+    scriptLogging "Try to use initial password for ${lapsUserName}: $initialEncryptedPassForLAPSUser (encrypted)."
+    retrievedPassword="$( decryptString "$initialEncryptedPassForLAPSUser" "$initSaltLaps" "$initPassLaps" )"
+fi
+if [ -z "$retrievedPassword" ]; then
+    scriptLogging "Failed to decrypt previous password" 2
+    exit 1
+fi
+
+####################################################################################################
+# Check current password with Retrieved password
+/usr/bin/dscl /Local/Default -authonly "$lapsUserName" "$retrievedPassword" 2> /dev/null
+returnCode=$?
+if [ "$returnCode" -eq 0 ]; then
+    scriptLogging "Current password has match with Retrieved password."
+else
+    scriptLogging "Retrieved password for $lapsUserName is not match current password. dserr: $returnCode"  2
+    exit $returnCode
+fi
+
+####################################################################################################
+# Change password with new one.
+newpassword="$( /usr/bin/openssl rand -base64 10 | /usr/bin/tr -d OoIi1lLS | /usr/bin/head -c 12 )"
+changePassword "$lapsUserName" "$retrievedPassword" "$newpassword"
+
+####################################################################################################
+# Encrypt New Password
+encryptedPassword="$( echo "$newpassword" | /usr/bin/openssl enc -aes256 -a -A -S "$saltLaps" -k "$passLaps" )"
+if [ -n "$encryptedPassword" ]; then
+    scriptLogging "New password: $encryptedPassword (Encrypted)"
+else
+    scriptLogging "Failed to encrypt new password. Why?" 2
+    scriptLogging "Roll back with previous one."
+    changePassword "$lapsUserName" "$newpassword" "$retrievedPassword"
+    exit 1
+fi
+
+####################################################################################################
+# Update Extent Attribute with New Password
+uploadPassword "$apiUser" "$apiPass" "$HWUUID" "$extAttName" "$encryptedPassword"
+returnCode=$?
+if [ "$returnCode" -ne 0 ]; then
+    scriptLogging "Failed to upload." 2
+    scriptLogging "Roll back with previous one."
+    changePassword "$lapsUserName" "$newpassword" "$retrievedPassword"
+    exit 1
+fi
+
+try="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extAttName" )"
+if [ "$try" = "$encryptedPassword" ]; then
+    scriptLogging "Retrieve test passed."
+    status=0
+else
+    scriptLogging "Retrieve test failed. Get unexpected string." 2
+    scriptLogging "Retrieved String: $try" 2
+    scriptLogging "Expected String: $encryptedPassword" 2
+    status=2
+fi
+
+scriptLogging "Done." "$status"
+exit "$status"
+
+# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
