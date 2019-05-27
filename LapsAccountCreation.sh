@@ -25,9 +25,9 @@
 #
 ####################################################################################################
 
-function shlogger(){
-    # `shlogger "your message"` then logging file and put it std-out.
-    # `shlogger "your message" 2` then logging file and put it std-err.
+function scriptLogging(){
+    # `scriptLogging "your message"` then logging file and put it std-out.
+    # `scriptLogging "your message" 2` then logging file and put it std-err.
     # Other than 2 is ignored.
     local logfile scriptname timestamp label mode
     logfile="/Library/Logs/LapsAccountCreation.log"
@@ -46,33 +46,30 @@ function shlogger(){
     esac
 }
 
-function DecryptString() {
-	# Usage: ~$ DecryptString "Encrypted String" "Salt" "Passphrase"
-	echo "${1}" | /usr/bin/openssl enc -aes256 -d -a -A -S "${2}" -k "${3}"
+function decryptString() {
+    local string salt passphrase status errmsgfile errmsg
+    string="$1"
+    salt="$2"
+    passphrase="$3"
+    errmsgfile="$( /usr/bin/mktemp )"
+    echo "$string" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passphrase" 2> "$errmsgfile"
+    status="${PIPESTATUS[1]}"
+    if [ "$status" -ne 0 ]; then
+        errmsg="$( /bin/cat "$errmsgfile" )"
+        scriptLogging "Decrypt failed: $errmsg" 2
+    fi
+    /bin/rm -f "$errmsgfile"
 }
 
-apiUser=$(DecryptString "${4}" "Salt" "Passphrase")
-apiPass=$(DecryptString "${5}" "Salt" "Passphrase")
+apiUser=$(decryptString "${4}" "Salt" "Passphrase")
+apiPass=$(decryptString "${5}" "Salt" "Passphrase")
 LAPSuser="laps"
 LAPSuserDisplay="laps"
 LAPSaccountEvent="seedLapsUser"
 LAPSaccountEventFVE="_notused"
 LAPSrunEvent="runLapsMaintenance"
 
-unEncryptedPassword=$(openssl rand -base64 10 | tr -d OoIi1lLS | head -c12;echo)
-####################################################################
-#
-#            ┌─── openssl is used to create
-#            │	a random Base64 string
-#            │                    ┌── remove ambiguous characters
-#            │                    │
-# ┌──────────┴──────────┐	  ┌───┴────────┐
-# openssl rand -base64 10 | tr -d OoIi1lLS | head -c12;echo
-#                                            └──────┬─────┘
-#                                                   │
-#             prints the first 12 characters  ──────┘
-#             of the randomly generated string
-#
+unEncryptedPassword=$(openssl rand -base64 10 | tr -d OoIi1lLS | head -c12; echo)
 
 SALT=$(openssl rand -hex 8)
 K=$(openssl rand -hex 12)
@@ -149,7 +146,7 @@ extAttName="\"LAPS\""
 # FVEstatus=$(fdesetup status | grep -w "FileVault is" | awk '{print $3}' | sed 's/[.]//g')
 
 # Logging Function for reporting actions
-ScriptLogging(){
+scriptLogging(){
 
 DATE=`date +%Y-%m-%d\ %H:%M:%S`
 LOG="$LogLocation"
@@ -157,57 +154,57 @@ LOG="$LogLocation"
 echo "$DATE" " $1" >> $LOG
 }
 
-ScriptLogging "======== Starting LAPS Account Creation ========"
-ScriptLogging "Checking parameters."
+scriptLogging "======== Starting LAPS Account Creation ========"
+scriptLogging "Checking parameters."
 
 # Verify parameters are present
 if [ "$apiUser" == "" ];then
-    ScriptLogging "Error:  The parameter 'API Username' is blank.  Please specify a user."
+    scriptLogging "Error:  The parameter 'API Username' is blank.  Please specify a user."
     echo "Error:  The parameter 'API Username' is blank.  Please specify a user."
-    ScriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "======== Aborting LAPS Account Creation ========"
     exit 1
 fi
 
 if [ "$apiPass" == "" ];then
-    ScriptLogging "Error:  The parameter 'API Password' is blank.  Please specify a password."
+    scriptLogging "Error:  The parameter 'API Password' is blank.  Please specify a password."
     echo "Error:  The parameter 'API Password' is blank.  Please specify a password."
-    ScriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "======== Aborting LAPS Account Creation ========"
     exit 1
 fi
 
 if [ "$LAPSuser" == "" ];then
-    ScriptLogging "Error:  The parameter 'LAPS Account Shortname' is blank.  Please specify a user to create."
+    scriptLogging "Error:  The parameter 'LAPS Account Shortname' is blank.  Please specify a user to create."
     echo "Error:  The parameter 'LAPS Account Shortname' is blank.  Please specify a user to create."
-    ScriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "======== Aborting LAPS Account Creation ========"
     exit 1
 fi
 
 if [ "$LAPSuserDisplay" == "" ];then
-    ScriptLogging "Error:  The parameter 'LAPS Account Displayname' is blank.  Please specify a user to create."
+    scriptLogging "Error:  The parameter 'LAPS Account Displayname' is blank.  Please specify a user to create."
     echo "Error:  The parameter 'LAPS Account Displayname' is blank.  Please specify a user to create."
-    ScriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "======== Aborting LAPS Account Creation ========"
     exit 1
 fi
 
 if [ "$unEncryptedPassword" == "" ];then
-    ScriptLogging "Error:  The parameter 'LAPS Password Seed' is blank.  Please specify a password to seed."
+    scriptLogging "Error:  The parameter 'LAPS Password Seed' is blank.  Please specify a password to seed."
     echo "Error:  The parameter 'LAPS Password Seed' is blank.  Please specify a password to seed."
-    ScriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "======== Aborting LAPS Account Creation ========"
     exit 1
 fi
 
 if [ "$LAPSaccountEvent" == "" ];then
-    ScriptLogging "Error:  The parameter 'LAPS Account Event' is blank.  Please specify a Custom LAPS Account Event."
+    scriptLogging "Error:  The parameter 'LAPS Account Event' is blank.  Please specify a Custom LAPS Account Event."
     echo "Error:  The parameter 'LAPS Account Event' is blank.  Please specify a Custom LAPS Account Event."
-    ScriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "======== Aborting LAPS Account Creation ========"
     exit 1
 fi
 
 
 if [ "$LAPSrunEvent" == "" ];then
-    ScriptLogging "Error:  The parameter 'LAPS Run Event' is blank.  Please specify a Custom LAPS Run Event."
+    scriptLogging "Error:  The parameter 'LAPS Run Event' is blank.  Please specify a Custom LAPS Run Event."
     echo "Error:  The parameter 'LAPS Run Event' is blank.  Please specify a Custom LAPS Run Event."
-    ScriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "======== Aborting LAPS Account Creation ========"
     exit 1
 fi
 
@@ -215,16 +212,16 @@ fi
 checkUser=`dseditgroup -o checkmember -m $LAPSuser localaccounts | awk '{ print $1 }'`
 
 if [[ "$checkUser" = "yes" ]];then
-    ScriptLogging "Error: $LAPSuser already exists as a local user on the Computer"
+    scriptLogging "Error: $LAPSuser already exists as a local user on the Computer"
     echo "Error: $LAPSuser already exists as a local user on the Computer"
-    ScriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "======== Aborting LAPS Account Creation ========"
     exit 1
 else
-    ScriptLogging "$LAPSuser is not a local user on the Computer, proceeding..."
+    scriptLogging "$LAPSuser is not a local user on the Computer, proceeding..."
     echo "$LAPSuser is not a local user on the Computer, proceeding..."
 fi
 
-ScriptLogging "Parameters Verified."
+scriptLogging "Parameters Verified."
 
 # Identify the location of the jamf binary for the jamf_binary variable.
 CheckBinary (){
@@ -232,27 +229,27 @@ CheckBinary (){
 jamf_binary=`/usr/bin/which jamf`
 
 
-ScriptLogging "JAMF Binary is $jamf_binary"
+scriptLogging "JAMF Binary is $jamf_binary"
 }
 
 # Create the User Account
 CreateLAPSaccount (){
-    ScriptLogging "Creating LAPS Account..."
+    scriptLogging "Creating LAPS Account..."
     echo "Creating LAPS Account..."
     $jamf_binary createAccount -username $LAPSuser -realname $LAPSuserDisplay -password "$unEncryptedPassword" -home /var/$LAPSuser -shell /bin/bash -admin -hiddenUser -suppressSetupAssistant
-    ScriptLogging "LAPS Account Created..."
+    scriptLogging "LAPS Account Created..."
         echo "LAPS Account Created..."
 # The following isn't used if the Laps user will not be an FDE User
 #    else
 #        $jamf_binary policy -event $LAPSaccountEventFVE
-#        ScriptLogging "LAPS Account Created with FVE..."
+#        scriptLogging "LAPS Account Created with FVE..."
 #        echo "LAPS Account Created with FVE..."
 #    fi
 }
 
 # Update the LAPS Extention Attribute
 UpdateAPI (){
-    ScriptLogging "Recording new password for $LAPSuser into LAPS."
+    scriptLogging "Recording new password for $LAPSuser into LAPS."
     /usr/bin/curl -s -f -u ${apiUser}:${apiPass} -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/$udid"
 }
 
@@ -260,24 +257,24 @@ UpdateAPI (){
 # FVEcheck (){
 #     userCheck=`fdesetup list | awk -v usrN="$LAPSuserDisplay" -F, 'index($0, usrN) {print $1}'`
 #         if [ "${userCheck}" == "${LAPSuserDisplay}" ]; then
-#             ScriptLogging "$LAPSuserDisplay is enabled for FileVault 2."
+#             scriptLogging "$LAPSuserDisplay is enabled for FileVault 2."
 #             echo "$LAPSuserDisplay is enabled for FileVault 2."
 #         else
-#             ScriptLogging "Error: $LAPSuserDisplay is not enabled for FileVault 2."
+#             scriptLogging "Error: $LAPSuserDisplay is not enabled for FileVault 2."
 #             echo "Error: $LAPSuserDispaly is not enabled for FileVault 2."
 #         fi
 # }
 
 # If FileVault Encryption is enabled, verify account.
 # FVEverify (){
-#     ScriptLogging "Checking FileVault Status..."
+#     scriptLogging "Checking FileVault Status..."
 #     echo "Checking FileVault Status..."
 #     if [ "$FVEstatus" == "On" ];then
-#         ScriptLogging "FileVault is enabled, checking $LAPSuserDisplay..."
+#         scriptLogging "FileVault is enabled, checking $LAPSuserDisplay..."
 #         echo "FileVault is enabled, checking $LAPSuserDisplay..."
 #         FVEcheck
 #     else
-#         ScriptLogging "FileVault is not enabled."
+#         scriptLogging "FileVault is not enabled."
 #         echo "FileVault is not enabled."
 #     fi
 # }
@@ -289,7 +286,7 @@ CreateLAPSaccount
 UpdateAPI
 # FVEverify
 
-ScriptLogging "======== LAPS Account Creation Complete ========"
+scriptLogging "======== LAPS Account Creation Complete ========"
 echo "LAPS Account Creation Finished."
 
 # Run LAPS Password Randomization
