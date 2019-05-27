@@ -82,7 +82,7 @@ function retrievePassword(){
     attr="$4"
 
     response="$( /usr/bin/curl -s -f -u "${ua}:${up}" -H "Accept: application/xml" \
-                "$apiURL/JSSResource/computers/udid/$udid/subset/extension_attributes" \
+                "${apiURL}/JSSResource/computers/udid/$udid/subset/extension_attributes" \
                 -w "HTTPSTATUS:%{http_code}" )"
 
     httpStatus=$( echo "$response" | /usr/bin/tr -d '\n' | /usr/bin/sed -e 's/.*HTTPSTATUS://')
@@ -118,8 +118,8 @@ _XML
     xmlString="$( cat "$tmpfile" )"
     rm -f "$tmpfile"
 
-    /usr/bin/curl -s -u "$ua:$up" -X PUT -H "Content-Type: text/xml" -d "$xmlString" \
-                  "$apiURL/JSSResource/computers/udid/${udid}"
+    /usr/bin/curl -s -u "${ua}:${up}" -X PUT -H "Content-Type: text/xml" -d "$xmlString" \
+                  "${apiURL}/JSSResource/computers/udid/${udid}"
     return $?
 }
 
@@ -325,4 +325,5 @@ fi
 scriptLogging "Done." "$status"
 exit "$status"
 
+#-
 # vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
