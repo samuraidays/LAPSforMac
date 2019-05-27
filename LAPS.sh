@@ -37,7 +37,6 @@ fi
 
 ####################################################################################################
 # FUNCTIONS
-####################################################################################################
 function scriptLogging(){
     # `scriptLogging "your message"` then logging file and put it std-out.
     # `scriptLogging "your message" 2` then logging file and put it std-err.
@@ -147,7 +146,6 @@ function changePassword(){
 
 ####################################################################################################
 # REQUIRMENTS
-####################################################################################################
 jamfPlist=/Library/Preferences/com.jamfsoftware.jamf.plist
 if [ -f "$jamfPlist" ]; then
     apiURL="$( /usr/libexec/PlistBuddy -c "print jss_url" "$jamfPlist" )"
@@ -161,7 +159,6 @@ HWUUID="$( /usr/sbin/system_profiler SPHardwareDataType | /usr/bin/awk '/Hardwar
 
 ####################################################################################################
 #- Jamf Parameters
-####################################################################################################
 #- - Parameter  4: API User Name
 apiUser="$4"
 if [ -z "$apiUser" ]; then
@@ -176,22 +173,22 @@ if [ -z "$apiEncryptedPass" ]; then
     exit 1
 fi
 
-#- - Parameter  6: LAPS User Name
-lapsUserName="$6"
-if [ -z "$lapsUserName" ]; then
+#- - Parameter  6: Loacal Administrator User Name
+laUserName="$6"
+if [ -z "$laUserName" ]; then
     scriptLogging "LAPS user name was not given via parameter 6." 2
     exit 1
 fi
-msg="$( /usr/bin/dseditgroup -o checkmember -m "$lapsUserName" localaccounts 2>&1 )"
+msg="$( /usr/bin/dseditgroup -o checkmember -m "$laUserName" localaccounts 2>&1 )"
 result=$?
 if [ "$result" -ne 0 ]; then
     scriptLogging "${msg}. Return Code (dserr) is ${result}." 2
     exit 1
 fi
 
-#- - Parameter  7: Initial Encrypted Password of LAPS User
-initialEncryptedPassForLAPSUser="$7"
-if [ -z "$initialEncryptedPassForLAPSUser" ]; then
+#- - Parameter  7: Initial Encrypted Password of Loacal Administrator User
+initialEncryptedPassForLadminUser="$7"
+if [ -z "$initialEncryptedPassForLadminUser" ]; then
     scriptLogging "Initial Encrypted Password of LAPS User was not given via parameter 7." 2
     exit 1
 fi
@@ -218,32 +215,32 @@ if [ -z "$saltAPI" ] || [ -z "$passAPI" ]; then
     exit 1
 fi
 
-#- - Parameter 10: Salt & Passphrase for decrypt LAPS user password.
+#- - Parameter 10: Salt & Passphrase for encrypt/decrypt Local Administrator User password.
 #-                 format:: salt:passphrase
-lapsSaltPass="${10}"
-if [ -n "$lapsSaltPass" ]; then
-    saltLaps="$( echo "$lapsSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $1}' )"
-    passLaps="$( echo "$lapsSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $2}' )"
+laSaltPass="${10}"
+if [ -n "$laSaltPass" ]; then
+    laSalt="$( echo "$laSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $1}' )"
+    laPass="$( echo "$laSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $2}' )"
 else
     scriptLogging "Salt & Passphrase for decrypt LAPS user password was not given via parameter 10" 2
     exit 1
 fi
-if [ -z "$saltLaps" ] || [ -z "$passLaps" ]; then
+if [ -z "$laSalt" ] || [ -z "$laPass" ]; then
     scriptLogging "Invalit string format given via parameter 10" 2
     exit 1
 fi
 
 #- - Parameter 11: Salt & Passphrase for decrypt LAPS user's initial password.
 #-                 format:: salt:passphrase
-initialLapsSaltPass="${11}"
-if [ -n "$initialLapsSaltPass" ]; then
-    initSaltLaps="$( echo "$initialLapsSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $1}' )"
-    initPassLaps="$( echo "$initialLapsSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $2}' )"
+initialLaSaltPass="${11}"
+if [ -n "$initialLaSaltPass" ]; then
+    initLaSalt="$( echo "$initialLaSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $1}' )"
+    initLaPass="$( echo "$initialLaSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $2}' )"
 else
     scriptLogging "Salt & Passphrase for decrypt LAPS user's initial password was not given via parameter 11" 2
     exit 1
 fi
-if [ -z "$initSaltLaps" ] || [ -z "$initPassLaps" ]; then
+if [ -z "$initLaSalt" ] || [ -z "$initLaPass" ]; then
     scriptLogging "Invalit string format given via parameter 11" 2
     exit 1
 fi
@@ -261,11 +258,11 @@ fi
 previousEncryptedPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extAttName" )"
 if [ -n "$previousEncryptedPassword" ]; then
     scriptLogging "Retrieved previous password is $previousEncryptedPassword  (encrypted)."
-    retrievedPassword="$( decryptString "$previousEncryptedPassword" "$saltLaps" "$passLaps" )"
+    retrievedPassword="$( decryptString "$previousEncryptedPassword" "$laSalt" "$laPass" )"
 else
-    scriptLogging "Could not get previous password. Try initial password for ${lapsUserName}."
-    scriptLogging "Try to use initial password for ${lapsUserName}: $initialEncryptedPassForLAPSUser (encrypted)."
-    retrievedPassword="$( decryptString "$initialEncryptedPassForLAPSUser" "$initSaltLaps" "$initPassLaps" )"
+    scriptLogging "Could not get previous password. Try initial password for ${laUserName}."
+    scriptLogging "Try to use initial password for ${laUserName}: $initialEncryptedPassForLadminUser (encrypted)."
+    retrievedPassword="$( decryptString "$initialEncryptedPassForLadminUser" "$initLaSalt" "$initLaPass" )"
 fi
 if [ -z "$retrievedPassword" ]; then
     scriptLogging "Failed to decrypt previous password" 2
@@ -274,29 +271,29 @@ fi
 
 ####################################################################################################
 # Check current password with Retrieved password
-/usr/bin/dscl /Local/Default -authonly "$lapsUserName" "$retrievedPassword" 2> /dev/null
+/usr/bin/dscl /Local/Default -authonly "$laUserName" "$retrievedPassword" 2> /dev/null
 returnCode=$?
 if [ "$returnCode" -eq 0 ]; then
     scriptLogging "Current password has match with Retrieved password."
 else
-    scriptLogging "Retrieved password for $lapsUserName is not match current password. dserr: $returnCode"  2
+    scriptLogging "Retrieved password for $laUserName is not match current password. dserr: $returnCode"  2
     exit $returnCode
 fi
 
 ####################################################################################################
 # Change password with new one.
 newpassword="$( /usr/bin/openssl rand -base64 10 | /usr/bin/tr -d OoIi1lLS | /usr/bin/head -c 12 )"
-changePassword "$lapsUserName" "$retrievedPassword" "$newpassword"
+changePassword "$laUserName" "$retrievedPassword" "$newpassword"
 
 ####################################################################################################
 # Encrypt New Password
-encryptedPassword="$( echo "$newpassword" | /usr/bin/openssl enc -aes256 -a -A -S "$saltLaps" -k "$passLaps" )"
+encryptedPassword="$( echo "$newpassword" | /usr/bin/openssl enc -aes256 -a -A -S "$laSalt" -k "$laPass" )"
 if [ -n "$encryptedPassword" ]; then
     scriptLogging "New password: $encryptedPassword (Encrypted)"
 else
     scriptLogging "Failed to encrypt new password. Why?" 2
     scriptLogging "Roll back with previous one."
-    changePassword "$lapsUserName" "$newpassword" "$retrievedPassword"
+    changePassword "$laUserName" "$newpassword" "$retrievedPassword"
     exit 1
 fi
 
@@ -307,7 +304,7 @@ returnCode=$?
 if [ "$returnCode" -ne 0 ]; then
     scriptLogging "Failed to upload." 2
     scriptLogging "Roll back with previous one."
-    changePassword "$lapsUserName" "$newpassword" "$retrievedPassword"
+    changePassword "$laUserName" "$newpassword" "$retrievedPassword"
     exit 1
 fi
 
