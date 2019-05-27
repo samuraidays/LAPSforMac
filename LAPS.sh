@@ -60,14 +60,14 @@ function scriptLogging(){
 }
 
 function decryptString() {
-    local string salt passphrase r errmsgfile errmsg
+    local string salt passphrase status errmsgfile errmsg
     string="$1"
     salt="$2"
     passphrase="$3"
     errmsgfile="$( /usr/bin/mktemp )"
     echo "$string" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passphrase" 2> "$errmsgfile"
-    r="${PIPESTATUS[1]}"
-    if [ "$r" -ne 0 ]; then
+    status="${PIPESTATUS[1]}"
+    if [ "$status" -ne 0 ]; then
         errmsg="$( /bin/cat "$errmsgfile" )"
         scriptLogging "Decrypt failed: $errmsg" 2
     fi
@@ -75,7 +75,7 @@ function decryptString() {
 }
 
 function retrievePassword(){
-    local ua up uuid attr response httpStatus
+    local ua up udid attr response httpStatus
     ua="$1"
     up="$2"
     udid="$3"
@@ -83,7 +83,7 @@ function retrievePassword(){
 
     response="$( /usr/bin/curl -s -f -u "${ua}:${up}" -H "Accept: application/xml" \
                 "$apiURL/JSSResource/computers/udid/$udid/subset/extension_attributes" \
-                --write-out "HTTPSTATUS:%{http_code}" )"
+                -w "HTTPSTATUS:%{http_code}" )"
 
     httpStatus=$( echo "$response" | /usr/bin/tr -d '\n' | /usr/bin/sed -e 's/.*HTTPSTATUS://')
     if [ "$httpStatus" -ne 200 ];then
@@ -96,22 +96,31 @@ function retrievePassword(){
 }
 
 function uploadPassword(){
-    local ua up uuid attr response httpStatus httpBody
+    local ua up udid attr pass xmlString tmpfile
     ua="$1"
     up="$2"
     udid="$3"
     attr="$4"
+    pass="$5"
 
+    tmpfile="$( /usr/bin/mktemp )"
+    cat <<_XML > "$tmpfile"
+<?xml version="1.0" encoding="UTF-8"?>
+<computer>
+    <extension_attributes>
+        <extension_attribute>
+            <name>${attr}</name>
+            <value>${pass}</value>
+        </extension_attribute>
+    </extension_attributes>
+</computer>
+_XML
+    xmlString="$( cat "$tmpfile" )"
+    rm -f "$tmpfile"
 
-
-    /usr/bin/curl -s -u ${apiUser}:${apiPass} -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/$udid"
-
-    sleep 1
-
-    lapsPasswordEncrypted=$(curl -s -f -u $apiUser:$apiPass -H "Accept: application/xml" $apiURL/JSSResource/computers/udid/$udid/subset/extension_attributes | xpath "//extension_attribute[name=$extAttName]" 2>/dev/null | awk -F'<value>|</value>' '{print $2}')
-
-    lapsPasswordDecrypted=$(decryptString "${lapsPasswordEncrypted}" "${salt}" "${K}")
-
+    /usr/bin/curl -s -u "$ua:$up" -X PUT -H "Content-Type: text/xml" -d "$xmlString" \
+                  "$apiURL/JSSResource/computers/udid/${udid}"
+    return $?
 }
 
 function changePassword(){
