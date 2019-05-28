@@ -2,11 +2,11 @@
 # vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
 #-
 #- Usage:
-#-  ./GenerateEncryptedString.sh StringToEncrypt
+#-  ./EncryptString.sh StringToEncrypt
 #-
 #-  ------
-#-  eval $( path/to/GenerateEncryptedString.sh StringToEncrypt )
-#-  echo "$StringToEncrypt" "$Salt" "$Passphrase"
+#-  eval $( path/to/EncryptString.sh StringToEncrypt )
+#-  echo "$EncryptedString $Salt $Passphrase $Saltphrase"
 #-
 
 if [ "$#" -eq 0 ]; then
