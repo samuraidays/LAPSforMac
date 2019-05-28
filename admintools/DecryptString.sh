@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
 #-
 #- Usage
 #-  path/to/DecryptString.sh -e EncryptedString [ -p Passphrase -s Salt | -f Salt:Passphrase ]
@@ -48,5 +49,3 @@ fi
 
 echo "$EncryptedString" | /usr/bin/openssl enc -aes256 -d -a -A -S "$Salt" -k "$PassPhrase"
 exit "${PIPESTATUS[1]}"
-
-# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :

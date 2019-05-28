@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
 #-
 #- Usage:
 #-  ./GenerateEncryptedString.sh StringToEncrypt
@@ -22,5 +23,3 @@ echo Salt=\'"$SALT"\'
 echo Passphrase=\'"$PASSPHRASE"\'
 echo Saltphrase=\'"${SALT}:${PASSPHRASE}"\'
 echo EncryptedString=\'"$ENCRYPTED"\'
-
-# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :

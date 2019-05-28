@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
 ####################################################################################################
 #
 #   MIT License
@@ -293,4 +294,3 @@ echo "LAPS Account Creation Finished."
 # $jamf_binary policy -event $LAPSrunEvent
 
 exit 0
-# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :

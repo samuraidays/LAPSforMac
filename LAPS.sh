@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
 ####################################################################################################
 #
 #   MIT License
@@ -321,6 +322,3 @@ fi
 
 scriptLogging "Done." "$status"
 exit "$status"
-
-#-
-# vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
