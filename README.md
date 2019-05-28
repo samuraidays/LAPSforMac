@@ -148,13 +148,13 @@ The current version of the LAPS script is available [here](https://github.com/un
 
                ┌─── openssl is used to create
                │    a random Base64 string
-               │                     ┌── remove ambiguous characters
-               │                     │
-    ┌──────────┴──────────┐      ┌───┴────────┐
+               │                  ┌── remove ambiguous characters
+               │                  │
+    ┌──────────┴──────────┐   ┌───┴────────┐
     openssl rand -base64 10 | tr -d OoIi1lLS  | head -c12
-       └──────┬─────┘                                  |
-              │                                        |
-              prints the first 12 characters ──────────┘
+                                               └───┬─────┘
+                                                   │
+              prints the first 12 characters ──────┘
               of the randomly generated string
 
 ## 6. Jamf LAPS Account Creation Policy
