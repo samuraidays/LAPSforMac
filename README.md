@@ -107,7 +107,7 @@ The current version of the LAPS Account Creation script is available [here](http
 ```apiURL``` Put the fully qualified domain name address of your Jamf server, including port number
 *(Your port is usually 8443 or 443; change as appropriate for your installation)*
 
-```LogLocation``` Put the preferred location of the log file for this script. If you don't have a preference, using the default setting of ```/Library/Logs/Jamf_Laps.log``` should be fine.
+```LogLocation``` Put the preferred location of the log file for this script. If you don't have a preference, using the default setting of ```/Library/Logs/Jamf_LAPS.YYYYMMDD.log``` should be fine.
 
 
 
@@ -140,7 +140,7 @@ The current version of the LAPS script is available [here](https://github.com/un
 ```apiURL``` Put the fully qualified domain name address of your Jamf server, including port number
 *(Your port is usually 8443 or 443; change as appropriate for your installation)*
 
-```LogLocation``` Put the preferred location of the log file for this script. If you don't have a preference, using the default setting of ```/Library/Logs/Jamf_Laps.log``` should be fine.
+```LogLocation``` Put the preferred location of the log file for this script. If you don't have a preference, using the default setting of ```/Library/Logs/Jamf_LAPS.YYYYMMDD.log``` should be fine.
 
 ```newPass``` This function controls the randomized password string. If you don't have a preference, the default should be fine for your environment.
 
@@ -152,9 +152,9 @@ The current version of the LAPS script is available [here](https://github.com/un
                │                  │
     ┌──────────┴──────────┐   ┌───┴────────┐
     openssl rand -base64 10 | tr -d OoIi1lLS  | head -c12
-                                               └───┬─────┘
-                                                   │
-              prints the first 12 characters ──────┘
+                                                └───┬───┘
+                                                    │
+              prints the first 12 characters ───────┘
               of the randomly generated string
 
 ## 6. Jamf LAPS Account Creation Policy
@@ -235,4 +235,4 @@ This policy randomizes the local admin accounts password on a specified interval
     LAPS Account Event FVE: createLAPSaccountFVE-{AccountShortName}
     LAPS Run Event: runLAPS
 ## 11. LAPS Log
-A log is written to each Mac run LAPS for troubleshooting. The default location for this log is ```/Library/Logs/Jamf_LAPS.log``` which can be modified if desired.
+A log is written to each Mac run LAPS for troubleshooting. The default location for this log is ```/Library/Logs/Jamf_LAPS.YYYYMMDD.log``` which can be modified if desired.
