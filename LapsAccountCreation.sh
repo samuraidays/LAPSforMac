@@ -1,5 +1,6 @@
 #!/bin/bash
 # vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
+
 ####################################################################################################
 #
 #   MIT License
@@ -47,41 +48,15 @@ function scriptLogging(){
     esac
 }
 
-function decryptString() {
-    local string salt passphrase status errmsgfile errmsg
-    string="$1"
-    salt="$2"
-    passphrase="$3"
-    errmsgfile="$( /usr/bin/mktemp )"
-    echo "$string" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passphrase" 2> "$errmsgfile"
-    status="${PIPESTATUS[1]}"
-    if [ "$status" -ne 0 ]; then
-        errmsg="$( /bin/cat "$errmsgfile" )"
-        scriptLogging "Decrypt failed: $errmsg" 2
-    fi
-    /bin/rm -f "$errmsgfile"
-}
-
-apiUser=$(decryptString "${4}" "Salt" "Passphrase")
-apiPass=$(decryptString "${5}" "Salt" "Passphrase")
-LAPSuser="laps"
-LAPSuserDisplay="laps"
-LAPSaccountEvent="seedLapsUser"
-LAPSaccountEventFVE="_notused"
-LAPSrunEvent="runLapsMaintenance"
-
-unEncryptedPassword=$(openssl rand -base64 10 | tr -d OoIi1lLS | head -c12; echo)
-
-SALT=$(openssl rand -hex 8)
-K=$(openssl rand -hex 12)
-
-encryptedPassword=$(echo "${unEncryptedPassword}" | openssl enc -aes256 -a -A -S "${SALT}" -k "${K}")
-echo "Password Encrypted with Salt: ${SALT} | Passphrase: ${K}"
-
-# Write the Salt and Passphrase out to the Cslient for subsequent password changes.
-
-defaults write /var/root/Library/Preferences/com.company.scramble.plist SALT  -string "${SALT}"
-defaults write /var/root/Library/Preferences/com.company.scramble.plist K  -string "${K}"
+# HARDCODED VALUES SET HERE
+apiUser=""
+apiPass=""
+LAPSuser=""
+LAPSuserDisplay=""
+newPass=""
+LAPSaccountEvent=""
+LAPSaccountEventFVE=""
+LAPSrunEvent=""
 
 # CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 4 AND, IF SO, ASSIGN TO "apiUser"
 if [ "$4" != "" ] && [ "$apiUser" == "" ];then
@@ -114,26 +89,16 @@ LAPSaccountEvent=$9
 fi
 
 # CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 10 AND, IF SO, ASSIGN TO "LAPSaccountEventFVE"
-# if [ "${10}" != "" ] && [ "$LAPSaccountEventFVE" == "" ];then
-# LAPSaccountEventFVE="${10}"
-# fi
+if [ "${10}" != "" ] && [ "$LAPSaccountEventFVE" == "" ];then
+LAPSaccountEventFVE="${10}"
+fi
 
 # CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 11 AND, IF SO, ASSIGN TO "LAPSrunEvent"
 if [ "${11}" != "" ] && [ "$LAPSrunEvent" == "" ];then
 LAPSrunEvent="${11}"
 fi
 
-
-
-JamfPlist=/Library/Preferences/com.jamfsoftware.jamf.plist
-if [ -f "$JamfPlist" ]; then
-    apiURL="$( /usr/libexec/PlistBuddy -c "print jss_url" "$JamfPlist" )"
-fi
-if [ -z "$apiURL" ]; then
-    echo "Failed to get api URL from $JamfPlist" >&2
-    exit 1
-fi
-
+apiURL="https://jss.unl.edu:8443"
 
 ####################################################################################################
 #
@@ -141,156 +106,124 @@ fi
 #
 ####################################################################################################
 
-udid=$(system_profiler SPHardwareDataType | /usr/bin/awk '/Hardware UUID:/ { print $3 }')
-xmlString="<?xml version=\"1.0\" encoding=\"UTF-8\"?><computer><extension_attributes><extension_attribute><name>LAPS</name><value>"$encryptedPassword"</value></extension_attribute></extension_attributes></computer>"
-extAttName="\"LAPS\""
-# FVEstatus=$(fdesetup status | grep -w "FileVault is" | awk '{print $3}' | sed 's/[.]//g')
+udid=$(/usr/sbin/system_profiler SPHardwareDataType | /usr/bin/awk '/Hardware UUID:/ { print $3 }')
+xmlString="<?xml version=\"1.0\" encoding=\"UTF-8\"?><computer><extension_attributes><extension_attribute><name>LAPS</name><value>$newPass</value></extension_attribute></extension_attributes></computer>"
+FVEstatus=$(fdesetup status | grep -w "FileVault is" | awk '{print $3}' | sed 's/[.]//g')
 
-# Logging Function for reporting actions
-scriptLogging(){
-
-DATE=`date +%Y-%m-%d\ %H:%M:%S`
-LOG="$LogLocation"
-
-echo "$DATE" " $1" >> $LOG
-}
 
 scriptLogging "======== Starting LAPS Account Creation ========"
 scriptLogging "Checking parameters."
 
 # Verify parameters are present
 if [ "$apiUser" == "" ];then
-    scriptLogging "Error:  The parameter 'API Username' is blank.  Please specify a user."
-    echo "Error:  The parameter 'API Username' is blank.  Please specify a user."
-    scriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "The parameter 'API Username' is blank.  Please specify a user." 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
     exit 1
 fi
 
 if [ "$apiPass" == "" ];then
-    scriptLogging "Error:  The parameter 'API Password' is blank.  Please specify a password."
-    echo "Error:  The parameter 'API Password' is blank.  Please specify a password."
-    scriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "The parameter 'API Password' is blank.  Please specify a password." 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
     exit 1
 fi
 
 if [ "$LAPSuser" == "" ];then
-    scriptLogging "Error:  The parameter 'LAPS Account Shortname' is blank.  Please specify a user to create."
-    echo "Error:  The parameter 'LAPS Account Shortname' is blank.  Please specify a user to create."
-    scriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "The parameter 'LAPS Account Shortname' is blank.  Please specify a user to create." 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
     exit 1
 fi
 
 if [ "$LAPSuserDisplay" == "" ];then
-    scriptLogging "Error:  The parameter 'LAPS Account Displayname' is blank.  Please specify a user to create."
-    echo "Error:  The parameter 'LAPS Account Displayname' is blank.  Please specify a user to create."
-    scriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "The parameter 'LAPS Account Displayname' is blank.  Please specify a user to create." 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
     exit 1
 fi
 
-if [ "$unEncryptedPassword" == "" ];then
-    scriptLogging "Error:  The parameter 'LAPS Password Seed' is blank.  Please specify a password to seed."
-    echo "Error:  The parameter 'LAPS Password Seed' is blank.  Please specify a password to seed."
-    scriptLogging "======== Aborting LAPS Account Creation ========"
+if [ "$newPass" == "" ];then
+    scriptLogging "The parameter 'LAPS Password Seed' is blank.  Please specify a password to seed." 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
     exit 1
 fi
 
 if [ "$LAPSaccountEvent" == "" ];then
-    scriptLogging "Error:  The parameter 'LAPS Account Event' is blank.  Please specify a Custom LAPS Account Event."
-    echo "Error:  The parameter 'LAPS Account Event' is blank.  Please specify a Custom LAPS Account Event."
-    scriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "The parameter 'LAPS Account Event' is blank.  Please specify a Custom LAPS Account Event." 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
     exit 1
 fi
 
+if [ "$LAPSaccountEventFVE" == "" ];then
+    scriptLogging "The parameter 'LAPS Account Event FVE' is blank.  Please specify a Custom LAPS Account Event." 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
+    exit 1
+fi
 
 if [ "$LAPSrunEvent" == "" ];then
-    scriptLogging "Error:  The parameter 'LAPS Run Event' is blank.  Please specify a Custom LAPS Run Event."
-    echo "Error:  The parameter 'LAPS Run Event' is blank.  Please specify a Custom LAPS Run Event."
-    scriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "The parameter 'LAPS Run Event' is blank.  Please specify a Custom LAPS Run Event." 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
     exit 1
 fi
 
 # Verify resetUser is not a local user on the computer
-checkUser=`dseditgroup -o checkmember -m $LAPSuser localaccounts | awk '{ print $1 }'`
+checkUser="$( dseditgroup -o checkmember -m "$LAPSuser" localaccounts | awk '{ print $1 }' )"
 
 if [[ "$checkUser" = "yes" ]];then
-    scriptLogging "Error: $LAPSuser already exists as a local user on the Computer"
-    echo "Error: $LAPSuser already exists as a local user on the Computer"
-    scriptLogging "======== Aborting LAPS Account Creation ========"
+    scriptLogging "$LAPSuser already exists as a local user on the Computer" 2
+    scriptLogging "======== Aborting LAPS Account Creation ========" 2
     exit 1
 else
     scriptLogging "$LAPSuser is not a local user on the Computer, proceeding..."
-    echo "$LAPSuser is not a local user on the Computer, proceeding..."
 fi
 
 scriptLogging "Parameters Verified."
 
-# Identify the location of the jamf binary for the jamf_binary variable.
-CheckBinary (){
-# Identify location of jamf binary.
-jamf_binary=`/usr/bin/which jamf`
-
-
-scriptLogging "JAMF Binary is $jamf_binary"
-}
 
 # Create the User Account
 CreateLAPSaccount (){
     scriptLogging "Creating LAPS Account..."
-    echo "Creating LAPS Account..."
-    $jamf_binary createAccount -username $LAPSuser -realname $LAPSuserDisplay -password "$unEncryptedPassword" -home /var/$LAPSuser -shell /bin/bash -admin -hiddenUser -suppressSetupAssistant
-    scriptLogging "LAPS Account Created..."
-        echo "LAPS Account Created..."
-# The following isn't used if the Laps user will not be an FDE User
-#    else
-#        $jamf_binary policy -event $LAPSaccountEventFVE
-#        scriptLogging "LAPS Account Created with FVE..."
-#        echo "LAPS Account Created with FVE..."
-#    fi
+    if [ "$FVEstatus" == "Off" ];then
+        /usr/local/bin/jamf policy -event "$LAPSaccountEvent"
+        scriptLogging "LAPS Account Created..."
+    else
+        /usr/local/bin/jamf policy -event "$LAPSaccountEventFVE"
+        scriptLogging "LAPS Account Created with FVE..."
+    fi
 }
 
 # Update the LAPS Extention Attribute
 UpdateAPI (){
     scriptLogging "Recording new password for $LAPSuser into LAPS."
-    /usr/bin/curl -s -f -u ${apiUser}:${apiPass} -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/$udid"
+    /usr/bin/curl -s -f -u "${apiUser}:${apiPass}" -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/$udid"
 }
 
 # Check to see if the account is authorized with FileVault 2
-# FVEcheck (){
-#     userCheck=`fdesetup list | awk -v usrN="$LAPSuserDisplay" -F, 'index($0, usrN) {print $1}'`
-#         if [ "${userCheck}" == "${LAPSuserDisplay}" ]; then
-#             scriptLogging "$LAPSuserDisplay is enabled for FileVault 2."
-#             echo "$LAPSuserDisplay is enabled for FileVault 2."
-#         else
-#             scriptLogging "Error: $LAPSuserDisplay is not enabled for FileVault 2."
-#             echo "Error: $LAPSuserDispaly is not enabled for FileVault 2."
-#         fi
-# }
+FVEcheck (){
+    userCheck="$( fdesetup list | awk -v usrN="$LAPSuserDisplay" -F, 'index($0, usrN) {print $1}' )"
+        if [ "${userCheck}" == "${LAPSuserDisplay}" ]; then
+            scriptLogging "$LAPSuserDisplay is enabled for FileVault 2." 2
+        else
+            scriptLogging "$LAPSuserDisplay is not enabled for FileVault 2." 2
+        fi
+}
 
 # If FileVault Encryption is enabled, verify account.
-# FVEverify (){
-#     scriptLogging "Checking FileVault Status..."
-#     echo "Checking FileVault Status..."
-#     if [ "$FVEstatus" == "On" ];then
-#         scriptLogging "FileVault is enabled, checking $LAPSuserDisplay..."
-#         echo "FileVault is enabled, checking $LAPSuserDisplay..."
-#         FVEcheck
-#     else
-#         scriptLogging "FileVault is not enabled."
-#         echo "FileVault is not enabled."
-#     fi
-# }
+FVEverify (){
+    scriptLogging "Checking FileVault Status..."
+    if [ "$FVEstatus" == "On" ];then
+        scriptLogging "FileVault is enabled, checking $LAPSuserDisplay..."
+        FVEcheck
+    else
+        scriptLogging "FileVault is not enabled."
+    fi
+}
 
-
-CheckBinary
 UpdateAPI
 CreateLAPSaccount
 UpdateAPI
-# FVEverify
+FVEverify
 
 scriptLogging "======== LAPS Account Creation Complete ========"
-echo "LAPS Account Creation Finished."
 
 # Run LAPS Password Randomization
-# $jamf_binary policy -event $LAPSrunEvent
+/usr/local/bin/jamf policy -event "$LAPSrunEvent"
 
 exit 0
