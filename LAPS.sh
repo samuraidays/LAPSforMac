@@ -43,7 +43,7 @@ function scriptLogging(){
     # `scriptLogging "your message" 2` then logging file and put it std-err.
     # Other than 2 is ignored.
     local logfile scriptname timestamp label mode
-    logfile="/Library/Logs/Jamf_LAPS.$( /bin/data +%F).log"
+    logfile="/Library/Logs/Jamf_LAPS.$( /bin/date +%F).log"
     scriptname="$( /usr/bin/basename "$0" )"
     timestamp="$( /bin/date "+%F %T" )"
     mode="$2"
