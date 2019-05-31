@@ -27,6 +27,17 @@
 #
 ####################################################################################################
 
+#-
+#- Usage
+#-   TBD
+#-
+#-
+
+if [ "$#" -eq 0 ]; then
+    /usr/bin/grep ^#- "$0" | /usr/bin/cut -c 4-
+    exit 0
+fi
+
 function scriptLogging(){
     # `scriptLogging "your message"` then logging file and put it std-out.
     # `scriptLogging "your message" 2` then logging file and put it std-err.
