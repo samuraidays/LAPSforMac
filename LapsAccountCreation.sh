@@ -38,6 +38,8 @@ if [ "$#" -eq 0 ]; then
     exit 0
 fi
 
+####################################################################################################
+# FUNCTIONS
 function scriptLogging(){
     # `scriptLogging "your message"` then logging file and put it std-out.
     # `scriptLogging "your message" 2` then logging file and put it std-err.
@@ -59,9 +61,79 @@ function scriptLogging(){
     esac
 }
 
+function decryptString() {
+    local string salt passphrase status errmsgfile errmsg
+    string="$1"
+    salt="$2"
+    passphrase="$3"
+    errmsgfile="$( /usr/bin/mktemp )"
+    echo "$string" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passphrase" 2> "$errmsgfile"
+    status="${PIPESTATUS[1]}"
+    if [ "$status" -ne 0 ]; then
+        errmsg="$( /bin/cat "$errmsgfile" )"
+        scriptLogging "Decrypt failed: $errmsg" 2
+    fi
+    /bin/rm -f "$errmsgfile"
+}
+
+####################################################################################################
+# REQUIRMENTS
+jamfPlist=/Library/Preferences/com.jamfsoftware.jamf.plist
+if [ -f "$jamfPlist" ]; then
+    apiURL="$( /usr/libexec/PlistBuddy -c "print jss_url" "$jamfPlist" )"
+fi
+if [ -z "$apiURL" ]; then
+    scriptLogging "Failed to get api URL from $jamfPlist" 2
+    exit 1
+fi
+
+HWUUID="$( /usr/sbin/system_profiler SPHardwareDataType | /usr/bin/awk '/Hardware UUID:/ { print $3 }' )"
+
+####################################################################################################
+#- Jamf Parameters
+#- - Parameter  4: API User Name
+apiUser="$4"
+if [ -z "$apiUser" ]; then
+    scriptLogging "API User was not given via parameter 4" 2
+    exit 1
+fi
+
+#- - Parameter  5: API User Password. It must be encrypted.
+apiEncryptedPass="$5"
+if [ -z "$apiEncryptedPass" ]; then
+    scriptLogging "API User's passowrd was not given via parameter 5." 2
+    exit 1
+fi
+
+#- - Parameter  6: Salt & Passphrase for decrypt API user password.
+#-                 format:: salt:passphrase
+apiSaltPass="$6"
+if [ -n "$apiSaltPass" ]; then
+    saltAPI="$( echo "$apiSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $1}' )"
+    passAPI="$( echo "$apiSaltPass" | /usr/bin/tr -d "[:blank:]" | /usr/bin/awk -F: '{print $2}' )"
+else
+    scriptLogging "Salt & Passphrase for decrypt API user password was not given via parameter 6" 2
+    exit 1
+fi
+if [ -z "$saltAPI" ] || [ -z "$passAPI" ]; then
+    scriptLogging "Invalit string format given via parameter 6" 2
+    exit 1
+fi
+
+#- - Parameter  7: Extend Attribute Name.
+extAttName="$8"
+if [ -z "$extAttName" ]; then
+    scriptLogging "Extend Attribute Name was not given via parameter 7." 2
+    exit 1
+fi
+
+
+
+
+
+
 # HARDCODED VALUES SET HERE
-apiUser=""
-apiPass=""
+apiPass="$( decryptString "$apiEncryptedPass" "$saltAPI" "$passAPI" )"
 LAPSuser=""
 LAPSuserDisplay=""
 newPass=""
@@ -69,15 +141,6 @@ LAPSaccountEvent=""
 LAPSaccountEventFVE=""
 LAPSrunEvent=""
 
-# CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 4 AND, IF SO, ASSIGN TO "apiUser"
-if [ "$4" != "" ] && [ "$apiUser" == "" ];then
-apiUser=$4
-fi
-
-# CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 5 AND, IF SO, ASSIGN TO "apiPass"
-if [ "$5" != "" ] && [ "$apiPass" == "" ];then
-apiPass=$5
-fi
 
 # CHECK TO SEE IF A VALUE WAS PASSED IN PARAMETER 6 AND, IF SO, ASSIGN TO "LAPSuser"
 if [ "$6" != "" ] && [ "$LAPSuser" == "" ];then
@@ -109,16 +172,9 @@ if [ "${11}" != "" ] && [ "$LAPSrunEvent" == "" ];then
 LAPSrunEvent="${11}"
 fi
 
-apiURL="https://jss.unl.edu:8443"
-
-####################################################################################################
-#
-# SCRIPT CONTENTS - DO NOT MODIFY BELOW THIS LINE
-#
-####################################################################################################
-
 udid=$(/usr/sbin/system_profiler SPHardwareDataType | /usr/bin/awk '/Hardware UUID:/ { print $3 }')
 xmlString="<?xml version=\"1.0\" encoding=\"UTF-8\"?><computer><extension_attributes><extension_attribute><name>LAPS</name><value>$newPass</value></extension_attribute></extension_attributes></computer>"
+
 FVEstatus=$(fdesetup status | grep -w "FileVault is" | awk '{print $3}' | sed 's/[.]//g')
 
 
