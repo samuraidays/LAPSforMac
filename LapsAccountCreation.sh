@@ -172,7 +172,6 @@ if [ "${11}" != "" ] && [ "$LAPSrunEvent" == "" ];then
 LAPSrunEvent="${11}"
 fi
 
-udid=$(/usr/sbin/system_profiler SPHardwareDataType | /usr/bin/awk '/Hardware UUID:/ { print $3 }')
 xmlString="<?xml version=\"1.0\" encoding=\"UTF-8\"?><computer><extension_attributes><extension_attribute><name>LAPS</name><value>$newPass</value></extension_attribute></extension_attributes></computer>"
 
 FVEstatus=$(fdesetup status | grep -w "FileVault is" | awk '{print $3}' | sed 's/[.]//g')
@@ -259,7 +258,7 @@ CreateLAPSaccount (){
 # Update the LAPS Extention Attribute
 UpdateAPI (){
     scriptLogging "Recording new password for $LAPSuser into LAPS."
-    /usr/bin/curl -s -f -u "${apiUser}:${apiPass}" -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/$udid"
+    /usr/bin/curl -s -f -u "${apiUser}:${apiPass}" -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/${HWUUID}"
 }
 
 # Check to see if the account is authorized with FileVault 2
