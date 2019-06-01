@@ -313,13 +313,12 @@ fi
 try="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extAttName" )"
 if [ "$try" = "$encryptedPassword" ]; then
     scriptLogging "Retrieve test passed."
-    status=0
+    scriptLogging "Done."
+    exit 0
 else
     scriptLogging "Retrieve test failed. Get unexpected string." 2
     scriptLogging "Retrieved String: $try" 2
     scriptLogging "Expected String: $encryptedPassword" 2
-    status=2
+    scriptLogging "Done in error." 2
+    exit 1
 fi
-
-scriptLogging "Done." "$status"
-exit "$status"
