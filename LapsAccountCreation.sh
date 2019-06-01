@@ -76,6 +76,34 @@ function decryptString() {
     /bin/rm -f "$errmsgfile"
 }
 
+function uploadPassword(){
+    local ua up udid attr pass xmlString tmpfile
+    ua="$1"
+    up="$2"
+    udid="$3"
+    attr="$4"
+    pass="$5"
+
+    tmpfile="$( /usr/bin/mktemp )"
+    cat <<_XML > "$tmpfile"
+<?xml version="1.0" encoding="UTF-8"?>
+<computer>
+    <extension_attributes>
+        <extension_attribute>
+            <name>${attr}</name>
+            <value>${pass}</value>
+        </extension_attribute>
+    </extension_attributes>
+</computer>
+_XML
+    xmlString="$( cat "$tmpfile" )"
+    rm -f "$tmpfile"
+
+    /usr/bin/curl -s -u "${ua}:${up}" -X PUT -H "Content-Type: text/xml" -d "$xmlString" \
+                  "${apiURL}/JSSResource/computers/udid/${udid}"
+    return $?
+}
+
 ####################################################################################################
 # REQUIRMENTS
 jamfPlist=/Library/Preferences/com.jamfsoftware.jamf.plist
@@ -126,11 +154,6 @@ if [ -z "$extAttName" ]; then
     scriptLogging "Extend Attribute Name was not given via parameter 7." 2
     exit 1
 fi
-
-
-
-
-
 
 # HARDCODED VALUES SET HERE
 apiPass="$( decryptString "$apiEncryptedPass" "$saltAPI" "$passAPI" )"
@@ -256,10 +279,7 @@ CreateLAPSaccount (){
 }
 
 # Update the LAPS Extention Attribute
-UpdateAPI (){
-    scriptLogging "Recording new password for $LAPSuser into LAPS."
-    /usr/bin/curl -s -f -u "${apiUser}:${apiPass}" -X PUT -H "Content-Type: text/xml" -d "${xmlString}" "${apiURL}/JSSResource/computers/udid/${HWUUID}"
-}
+uploadPassword "$apiUser" "$apiPass" "$HWUUID" "$attr" "$newPass"
 
 # Check to see if the account is authorized with FileVault 2
 FVEcheck (){
