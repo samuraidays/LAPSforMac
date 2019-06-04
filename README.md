@@ -151,7 +151,7 @@ The current version of the LAPS script is available [here](https://github.com/un
                │                  ┌── remove ambiguous characters
                │                  │
     ┌──────────┴──────────┐   ┌───┴────────┐
-    openssl rand -base64 10 | tr -d OoIi1lLS  | head -c12
+    openssl rand -base64 48 | tr -d OoIi1lLS  | head -c12
                                                 └───┬───┘
                                                     │
               prints the first 12 characters ───────┘

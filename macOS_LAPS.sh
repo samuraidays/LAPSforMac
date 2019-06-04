@@ -284,7 +284,7 @@ fi
 
 ####################################################################################################
 # Change password with new one.
-newpassword="$( /usr/bin/openssl rand -base64 10 | /usr/bin/tr -d OoIi1lLS | /usr/bin/head -c 12 )"
+newpassword="$( /usr/bin/openssl rand -base64 48 | /usr/bin/tr -d OoIi1lLS | /usr/bin/head -c 12 )"
 changePassword "$laUserName" "$retrievedPassword" "$newpassword"
 
 ####################################################################################################
