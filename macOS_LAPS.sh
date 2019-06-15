@@ -297,7 +297,8 @@ changePassword "$laUserName" "$retrievedPassword" "$newpassword"
 # Encrypt New Password
 encryptedPassword="$( echo "$newpassword" | /usr/bin/openssl enc -aes256 -a -A -S "$laSalt" -k "$laPass" )"
 if [ -n "$encryptedPassword" ]; then
-    scriptLogging "New password: $encryptedPassword (Encrypted)"
+    # If you want to log new password, remove ':' at start of next line.
+    : scriptLogging "New password: $encryptedPassword (Encrypted)"
 else
     scriptLogging "Failed to encrypt new password. Why?" 2
     scriptLogging "Roll back with previous one."
