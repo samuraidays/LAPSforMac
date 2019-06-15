@@ -250,7 +250,7 @@ fi
 ####################################################################################################
 # Decode API user Password
 apiPass="$( decryptString "$apiEncryptedPass" "$saltAPI" "$passAPI" )"
-if [ -z "$retrievedPassword" ]; then
+if [ -z "$apiPass" ]; then
     scriptLogging "Failed to decrypt API user's password" 2
     exit 1
 fi
@@ -267,7 +267,7 @@ else
     retrievedPassword="$( decryptString "$initialEncryptedPassForLadminUser" "$initLaSalt" "$initLaPass" )"
 fi
 if [ -z "$retrievedPassword" ]; then
-    scriptLogging "Failed to decrypt previous password" 2
+    scriptLogging "Failed to decrypt previous password of $laUserName" 2
     exit 1
 fi
 
