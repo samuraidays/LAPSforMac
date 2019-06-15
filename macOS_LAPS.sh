@@ -129,17 +129,18 @@ function changePassword(){
     ua="$1"
     old="$2"
     new="$3"
-    sysadminlog="$(
-        /usr/sbin/sysadminctl -adminUser "$ua" -adminPassword "$old" \
-          -resetPasswordFor "$ua" -newPassword "$new" 2>&1
-    )"
+    sysadminlog="$( /usr/bin/mktemp )"
+    /usr/sbin/sysadminctl -adminUser "$ua" -adminPassword "$old" \
+        -resetPasswordFor "$ua" -newPassword "$new" > "$sysadminlog" 2>&1
     result=$?
     if [ "$result" -ne 0 ]; then
         scriptLogging "Failed to change password of $ua" 2
-        scriptLogging "$sysadminlog" 2
+        scriptLogging "$( /bin/cat "$sysadminlog" )" 2
+        rm -f "$sysadminlog"
         exit 1
     else
-        scriptLogging "$sysadminlog"
+        scriptLogging "$( /bin/cat "$sysadminlog" )"
+        rm -f "$sysadminlog"
     fi
 
     /usr/bin/dscl /Local/Default -authonly "$ua" "$new" 2> /dev/null
