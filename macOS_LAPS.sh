@@ -83,7 +83,7 @@ function retrievePassword(){
     attr="$4"
 
     response="$( /usr/bin/curl -s -f -u "${ua}:${up}" -H "Accept: application/xml" \
-                "${apiURL}/JSSResource/computers/udid/$udid/subset/extension_attributes" \
+                "${apiURL}JSSResource/computers/udid/$udid/subset/extension_attributes" \
                 -w "HTTPSTATUS:%{http_code}" )"
 
     httpStatus=$( echo "$response" | /usr/bin/tr -d '\n' | /usr/bin/sed -e 's/.*HTTPSTATUS://')
@@ -120,20 +120,26 @@ _XML
     rm -f "$tmpfile"
 
     /usr/bin/curl -s -u "${ua}:${up}" -X PUT -H "Content-Type: text/xml" -d "$xmlString" \
-                  "${apiURL}/JSSResource/computers/udid/${udid}"
+                  "${apiURL}JSSResource/computers/udid/${udid}" > /dev/null 2>&1
     return $?
 }
 
 function changePassword(){
-    local ua old new result
+    local ua old new result sysadminlog
     ua="$1"
     old="$2"
     new="$3"
-    /usr/sbin/sysadminctl -adminUser "$ua" -adminPassword "$old" -resetPasswordFor "$ua" -newPassword "$new"
+    sysadminlog="$(
+        /usr/sbin/sysadminctl -adminUser "$ua" -adminPassword "$old" \
+          -resetPasswordFor "$ua" -newPassword "$new" 2>&1
+    )"
     result=$?
     if [ "$result" -ne 0 ]; then
         scriptLogging "Failed to change password of $ua" 2
+        scriptLogging "$sysadminlog" 2
         exit 1
+    else
+        scriptLogging "$sysadminlog"
     fi
 
     /usr/bin/dscl /Local/Default -authonly "$ua" "$new" 2> /dev/null
