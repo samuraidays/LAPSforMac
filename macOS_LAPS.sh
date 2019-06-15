@@ -181,7 +181,7 @@ if [ -z "$laUserName" ]; then
     scriptLogging "LAPS user name was not given via parameter 6." 2
     exit 1
 fi
-msg="$( /usr/bin/dseditgroup -o checkmember -m "$laUserName" localaccounts 2>&1 )"
+msg="$( /usr/sbin/dseditgroup -o checkmember -m "$laUserName" localaccounts 2>&1 )"
 result=$?
 if [ "$result" -ne 0 ]; then
     scriptLogging "${msg}. Return Code (dserr) is ${result}." 2

@@ -135,7 +135,6 @@ The current version of the LAPS script is available [here](https://github.com/un
 
 ```
 
-
 ### Variables
 ```apiURL``` Put the fully qualified domain name address of your Jamf server, including port number
 *(Your port is usually 8443 or 443; change as appropriate for your installation)*
