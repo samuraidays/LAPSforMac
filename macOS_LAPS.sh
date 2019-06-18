@@ -30,11 +30,19 @@
 #-
 #- Usage:
 #-  macOS_LAPS.sh is designed to be used via JamfPro.
+#-  macOS version 10.14 or later. ( Because I tested this with macOS 10.14 Mojave or later ).
 #-
 
+# Show help.
 if [ "$#" -eq 0 ]; then
     /usr/bin/grep ^#- "$0" | /usr/bin/cut -c 4-
     exit 0
+fi
+
+# Check OS Version.
+if [ "$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )" -lt 14 ]; then
+    /usr/bin/grep ^#- "$0" | /usr/bin/cut -c 4-
+    exit 1
 fi
 
 ####################################################################################################
