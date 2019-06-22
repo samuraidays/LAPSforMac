@@ -1,12 +1,12 @@
 #!/bin/bash
 # vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
 #-
-#- Usage
-#-  path/to/DecryptString.sh -e EncryptedString -p Passphrase -s Salt
+#- Usage:
+#-  ./DecryptString.sh -e EncryptedString -p Passphrase -s Salt
 #-  or
-#-  path/to/DecryptString.sh -e EncryptedString -f Salt:Passphrase
+#-  ./DecryptString.sh -e EncryptedString -f Salt:Passphrase
 #-
-#- -----
+#-  -----
 #-  eval $(path/to/EncryptString.sh plainTextString)
 #-  decryptedString=$(path/to/DecryptString.sh -e $EncryptedString -p $Passphrase -s $Salt)
 #-
