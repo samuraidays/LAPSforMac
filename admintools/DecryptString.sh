@@ -6,7 +6,7 @@
 #-  or
 #-  ./DecryptString.sh -e EncryptedString -f Salt:Passphrase
 #-
-#- -----
+#-  -----
 #-  eval $(path/to/EncryptString.sh plainTextString)
 #-  decryptedString=$(path/to/DecryptString.sh -e $EncryptedString -p $Passphrase -s $Salt)
 #-
