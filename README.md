@@ -36,15 +36,15 @@ macOS_LAPS.sh randomly changes the password of admin account of macOS computer a
 
 *Notes: For Jamf permissions C=Create, R=Read, U=Update, D=Delete (Not sure why the "Users" permission is needed. After much trial and error, and a call to JAMF, I discovered this permission set was required to properly read and update the Computer tables)*
 
-## Script parameters
-    Parameter 4: API Username
-    Parameter 5: API Password
-    Parameter 6: LAPS Account Shortname
-    Parameter 7:
-    Parameter 8:
-    Parameter 9:
-    Parameter 10:
-    Parameter 11:
+## Policy parameters
+- Parameter  4: API User Name
+- Parameter  5: API User Password. It must be encrypted.
+- Parameter  6: Loacal Administrator User Name
+- Parameter  7: Initial Encrypted Password of Loacal Administrator User
+- Parameter  8: Extend Attribute Name which stores encrypted password string.
+- Parameter  9: Salt & Passphrase for decrypt API user password. (format:: salt:passphrase)
+- Parameter 10: Salt & Passphrase for encrypt/decrypt Local Administrator User password.  (format:: salt:passphrase)
+- Parameter 11: Salt & Passphrase for decrypt LAPS user's initial password.  (format:: salt:passphrase)
 
 ## Log Location
 You will find this script log as `/Library/Logs/Jamf_LAPS.YYYYMMDD.log`.
