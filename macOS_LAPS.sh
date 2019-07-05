@@ -1,32 +1,8 @@
 #!/bin/bash
 # vim: set ts=4 sw=4 sts=0 ft=sh fenc=utf-8 ff=unix :
-
-####################################################################################################
 #
-#   MIT License
+# https://github.com/NU-ITS/LAPSforMac/blob/master/LICENSE
 #
-#   Copyright (c) 2016 University of Nebraska–Lincoln
-#
-#	Permission is hereby granted, free of charge, to any person obtaining a copy
-#   of this software and associated documentation files (the "Software"), to deal
-#   in the Software without restriction, including without limitation the rights
-#   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#   copies of the Software, and to permit persons to whom the Software is
-#   furnished to do so, subject to the following conditions:
-#
-#   The above copyright notice and this permission notice shall be included in all
-#   copies or substantial portions of the Software.
-#
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#
-####################################################################################################
-
 #-
 #- Usage:
 #-  macOS_LAPS.sh is designed to be used via JamfPro.
@@ -91,7 +67,7 @@ function retrievePassword(){
     attr="$4"
 
     response="$( /usr/bin/curl -s -f -u "${ua}:${up}" -H "Accept: application/xml" \
-                "${apiURL}JSSResource/computers/udid/$udid/subset/extension_attributes" \
+                "${apiURL%%/}/JSSResource/computers/udid/$udid/subset/extension_attributes" \
                 -w "HTTPSTATUS:%{http_code}" )"
 
     httpStatus=$( echo "$response" | /usr/bin/tr -d '\n' | /usr/bin/sed -e 's/.*HTTPSTATUS://')
@@ -128,7 +104,7 @@ _XML
     rm -f "$tmpfile"
 
     /usr/bin/curl -s -u "${ua}:${up}" -X PUT -H "Content-Type: text/xml" -d "$xmlString" \
-                  "${apiURL}JSSResource/computers/udid/${udid}" > /dev/null 2>&1
+                  "${apiURL%%/}/JSSResource/computers/udid/${udid}" > /dev/null 2>&1
     return $?
 }
 
@@ -298,9 +274,8 @@ else
 fi
 
 ####################################################################################################
-# Change password with new one.
+# Make a new password
 newpassword="$( /usr/bin/openssl rand -base64 48 | /usr/bin/tr -d OoIi1lLS | /usr/bin/head -c 12 )"
-changePassword "$laUserName" "$retrievedPassword" "$newpassword"
 
 ####################################################################################################
 # Encrypt New Password
@@ -310,10 +285,12 @@ if [ -n "$encryptedPassword" ]; then
     : scriptLogging "New password: $encryptedPassword (Encrypted)"
 else
     scriptLogging "Failed to encrypt new password. Why?" 2
-    scriptLogging "Roll back with previous one."
-    changePassword "$laUserName" "$newpassword" "$retrievedPassword"
     exit 1
 fi
+
+####################################################################################################
+# Change password with new one.
+changePassword "$laUserName" "$retrievedPassword" "$newpassword"
 
 ####################################################################################################
 # Update Extent Attribute with New Password
