@@ -124,7 +124,7 @@ function changePassword(){
         rm -f "$sysadminlog"
         exit 1
     else
-        scriptLogging "$( /bin/cat "$sysadminlog" )"
+        scriptLogging "$( /usr/bin/awk -F']' '{print $2}' "$sysadminlog" | /usr/bin/tr -d '\n' )"
         rm -f "$sysadminlog"
     fi
 
@@ -251,7 +251,7 @@ fi
 # Retrieve LAPS user password from Extent Attribute
 previousEncryptedPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "${apiURL%%/}" )"
 if [ -n "$previousEncryptedPassword" ]; then
-    scriptLogging "Retrieved previous password is $previousEncryptedPassword  (encrypted)."
+    scriptLogging "Retrieved previous password is $previousEncryptedPassword (encrypted)."
     retrievedPassword="$( decryptString "$previousEncryptedPassword" "$laSalt" "$laPass" )"
 else
     scriptLogging "Could not get previous password. Try initial password for ${laUserName}."
@@ -268,7 +268,7 @@ fi
 /usr/bin/dscl /Local/Default -authonly "$laUserName" "$retrievedPassword" 2> /dev/null
 returnCode=$?
 if [ "$returnCode" -ne 0 ]; then
-    scriptLogging "Retrieved password for $laUserName is not match current password. dserr: $returnCode"  2
+    scriptLogging "Retrieved password for $laUserName is not match current password. dserr: $returnCode" 2
     exit $returnCode
 fi
 scriptLogging "Current password has match with Retrieved password."
