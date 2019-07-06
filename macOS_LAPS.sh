@@ -188,8 +188,8 @@ if [ -z "$initialEncryptedPassForLadminUser" ]; then
 fi
 
 #- - Parameter  8: Extend Attribute Name.
-extAttName="$8"
-if [ -z "$extAttName" ]; then
+extensionAttributeName="$8"
+if [ -z "$extensionAttributeName" ]; then
     scriptLogging "Extend Attribute Name was not given via parameter 8." 2
     exit 1
 fi
@@ -249,7 +249,7 @@ fi
 
 ####################################################################################################
 # Retrieve LAPS user password from Extent Attribute
-previousEncryptedPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extAttName" "${apiURL%%/}" )"
+previousEncryptedPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "${apiURL%%/}" )"
 if [ -n "$previousEncryptedPassword" ]; then
     scriptLogging "Retrieved previous password is $previousEncryptedPassword  (encrypted)."
     retrievedPassword="$( decryptString "$previousEncryptedPassword" "$laSalt" "$laPass" )"
@@ -293,7 +293,7 @@ changePassword "$laUserName" "$retrievedPassword" "$newpassword"
 
 ####################################################################################################
 # Update Extent Attribute with New Password
-uploadPassword "$apiUser" "$apiPass" "$HWUUID" "$extAttName" "$encryptedPassword" "${apiURL%%/}"
+uploadPassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "$encryptedPassword" "${apiURL%%/}"
 returnCode=$?
 if [ "$returnCode" -ne 0 ]; then
     scriptLogging "Failed to upload." 2
@@ -302,7 +302,7 @@ if [ "$returnCode" -ne 0 ]; then
     exit 1
 fi
 
-try="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extAttName" "${apiURL%%/}" )"
+try="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "${apiURL%%/}" )"
 if [ "$try" = "$encryptedPassword" ]; then
     scriptLogging "Retrieve test passed."
     scriptLogging "Done."
