@@ -124,7 +124,7 @@ function changePassword(){
         rm -f "$sysadminlog"
         exit 1
     else
-        scriptLogging "$( /usr/bin/awk -F']' '{print $2}' "$sysadminlog" | /usr/bin/tr -d '\n' )"
+        scriptLogging "$( /usr/bin/awk -F'] ' '{print $2}' "$sysadminlog" | /usr/bin/tr -d '\n-' )"
         rm -f "$sysadminlog"
     fi
 
@@ -271,7 +271,7 @@ if [ "$returnCode" -ne 0 ]; then
     scriptLogging "Retrieved password for $laUserName is not match current password. dserr: $returnCode" 2
     exit $returnCode
 fi
-scriptLogging "Current password has match with Retrieved password."
+scriptLogging "Current password has match with retrieved password."
 
 ####################################################################################################
 # Make a new password
