@@ -19,7 +19,7 @@ SALT="$(/usr/bin/openssl rand -hex 8)"
 PASSPHRASE="$(/usr/bin/openssl rand -hex 12)"
 ENCRYPTED="$(echo "$STRING" | /usr/bin/openssl enc -aes256 -a -A -S "$SALT" -k "$PASSPHRASE")"
 
-echo Salt=\'"$SALT"\'
-echo Passphrase=\'"$PASSPHRASE"\'
-echo Saltphrase=\'"${SALT}:${PASSPHRASE}"\'
-echo EncryptedString=\'"$ENCRYPTED"\'
+echo salt=\'"$SALT"\'
+echo passphrase=\'"$PASSPHRASE"\'
+echo saltphrase=\'"${SALT}:${PASSPHRASE}"\'
+echo encryptedString=\'"$ENCRYPTED"\'

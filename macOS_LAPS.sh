@@ -45,16 +45,18 @@ function scriptLogging(){
 }
 
 function decryptString() {
-    local encryptedString salt passphrase status errmsgfile errmsg
+    local decryptString encryptedString salt passphrase status errmsgfile errmsg
     encryptedString="$1"
     salt="$2"
     passphrase="$3"
     errmsgfile="$( /usr/bin/mktemp )"
-    echo "$encryptedString" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passphrase" 2> "$errmsgfile"
-    status=$?
-    if [ "$status" -ne 0 ]; then
+    decryptString="$( echo "$encryptedString" | /usr/bin/openssl enc -aes256 -d -a -A -S "$salt" -k "$passphrase" 2> "$errmsgfile" )"
+
+    if [ -s "$errmsgfile" ]; then
         errmsg="Decrypt failed: $( /bin/cat "$errmsgfile" )"
         scriptLogging "$errmsg" 2
+    else
+        echo "$decryptString"
     fi
     /bin/rm -f "$errmsgfile"
 }
@@ -275,7 +277,8 @@ scriptLogging "Current password has match with retrieved password."
 
 ####################################################################################################
 # Make a new password
-newpassword="$( /usr/bin/openssl rand -base64 48 | /usr/bin/tr -d OoIi1lLS | /usr/bin/head -c 12 )"
+lengthOfPassword=16
+newpassword="$( /usr/bin/openssl rand -base64 $(( lengthOfPassword * 10 )) | /usr/bin/tr -d 'OoIi1lLS/+=\n' | /usr/bin/head -c "$lengthOfPassword" )"
 
 ####################################################################################################
 # Encrypt New Password

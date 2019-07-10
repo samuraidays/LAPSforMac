@@ -8,7 +8,7 @@
 #-
 #-  -----
 #-  eval $(path/to/EncryptString.sh plainTextString)
-#-  decryptedString=$(path/to/DecryptString.sh -e $EncryptedString -p $Passphrase -s $Salt)
+#-  decryptedString=$(path/to/DecryptString.sh -e $encryptedString -p $passphrase -s $salt)
 #-
 
 while getopts e:f:s:p:h sw
