@@ -45,7 +45,7 @@ function scriptLogging(){
 }
 
 function decryptString() {
-    local decryptString encryptedString salt passphrase status errmsgfile errmsg
+    local decryptString encryptedString salt passphrase errmsgfile errmsg
     encryptedString="$1"
     salt="$2"
     passphrase="$3"
