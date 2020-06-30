@@ -16,8 +16,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 # Check OS Version.
-OSVERSION=$(( $( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $1}' ) * 100 + $( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )  ))
-if [ "$OSVERSION" -lt 1014 ]; then
+if [ "$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '$1 * 100 + $2 {print V}' )" -lt 1014 ]; then
     /usr/bin/grep ^#- "$0" | /usr/bin/cut -c 4-
     exit 1
 fi
