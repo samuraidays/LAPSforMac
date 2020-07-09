@@ -254,10 +254,14 @@ fi
 
 ####################################################################################################
 # Retrieve LAPS user password from Extent Attribute
-previousEncryptedPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "${apiURL%%/}" )"
-if [ -n "$previousEncryptedPassword" ]; then
-    scriptLogging "Retrieved previous password is $previousEncryptedPassword (encrypted)."
-    retrievedPassword="$( decryptString "$previousEncryptedPassword" "$laSalt" "$laPass" )"
+# previousEncryptedPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "${apiURL%%/}" )"
+#if [ -n "$previousEncryptedPassword" ]; then
+#    scriptLogging "Retrieved previous password is $previousEncryptedPassword (encrypted)."
+#    retrievedPassword="$( decryptString "$previousEncryptedPassword" "$laSalt" "$laPass" )"
+previousPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "${apiURL%%/}" )"
+if [ -n "$previousPassword" ]; then
+    scriptLogging "Retrieved previous password is $previousPassword (encrypted)."
+    retrievedPassword="$( decryptString "$previousPassword" "$laSalt" "$laPass" )"
 else
     scriptLogging "Could not get previous password. Try initial password for ${laUserName}."
     scriptLogging "Try to use initial password for ${laUserName}: $initialEncryptedPassForLadminUser (encrypted)."
@@ -280,18 +284,18 @@ scriptLogging "Current password has match with retrieved password."
 
 ####################################################################################################
 # Make a new password
-lengthOfPassword=16
+lengthOfPassword=20
 newpassword="$( /usr/bin/openssl rand -base64 $(( lengthOfPassword * 10 )) | /usr/bin/tr -d 'OoIi1lLS/+=\n' | /usr/bin/head -c "$lengthOfPassword" )"
 
 ####################################################################################################
 # Encrypt New Password
-encryptedPassword="$( echo "$newpassword" | /usr/bin/openssl enc -aes256 -a -A -S "$laSalt" -k "$laPass" )"
-if [ -z "$encryptedPassword" ]; then
-    scriptLogging "Failed to encrypt new password. Why?" 2
-    exit 1
-fi
+#encryptedPassword="$( echo "$newpassword" | /usr/bin/openssl enc -aes256 -a -A -S "$laSalt" -k "$laPass" )"
+#if [ -z "$encryptedPassword" ]; then
+#    scriptLogging "Failed to encrypt new password. Why?" 2
+#    exit 1
+#fi
 # If you want to log new password, remove ':' at start of next line.
-: scriptLogging "New password: $encryptedPassword (Encrypted)"
+#: scriptLogging "New password: $encryptedPassword (Encrypted)"
 
 ####################################################################################################
 # Change password with new one.
@@ -299,7 +303,8 @@ changePassword "$laUserName" "$retrievedPassword" "$newpassword"
 
 ####################################################################################################
 # Update Extent Attribute with New Password
-uploadPassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "$encryptedPassword" "${apiURL%%/}"
+#uploadPassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "$encryptedPassword" "${apiURL%%/}"
+uploadPassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "$newpassword" "${apiURL%%/}"
 returnCode=$?
 if [ "$returnCode" -ne 0 ]; then
     scriptLogging "Failed to upload." 2
@@ -309,14 +314,14 @@ if [ "$returnCode" -ne 0 ]; then
 fi
 
 try="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "${apiURL%%/}" )"
-if [ "$try" = "$encryptedPassword" ]; then
+if [ "$try" = "$newpassword" ]; then
     scriptLogging "Retrieve test passed."
     scriptLogging "Done."
     exit 0
 else
     scriptLogging "Retrieve test failed. Get unexpected string." 2
     scriptLogging "Retrieved String: $try" 2
-    scriptLogging "Expected String: $encryptedPassword" 2
+    scriptLogging "Expected String: $newpassword" 2
     scriptLogging "Done in error." 2
     exit 1
 fi
