@@ -22,7 +22,7 @@ if [ "$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. 'V = $1 * 100 + $2 
 fi
 
 # Check Log Directory
-mkdir -p /Library/Logs/techsupport/
+mkdir -p /Library/Logs/TechSupport/
 
 ####################################################################################################
 # FUNCTIONS
@@ -31,7 +31,7 @@ function scriptLogging(){
     # `scriptLogging "your message" 2` then logging file and put it std-err.
     # Other than 2 is ignored.
     local logfile scriptname timestamp label mode
-    logfile="/Library/Logs/techsupport/Jamf_LAPS.$( /bin/date +%F).log"
+    logfile="/Library/Logs/TechSupport/Jamf_LAPS.$( /bin/date +%F).log"
     scriptname="$( /usr/bin/basename "$0" )"
     timestamp="$( /bin/date "+%F %T" )"
     mode="$2"
