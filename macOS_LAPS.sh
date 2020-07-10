@@ -261,7 +261,8 @@ fi
 previousPassword="$( retrievePassword "$apiUser" "$apiPass" "$HWUUID" "$extensionAttributeName" "${apiURL%%/}" )"
 if [ -n "$previousPassword" ]; then
     scriptLogging "Retrieved previous password."
-    retrievedPassword="$( decryptString "$previousPassword" "$laSalt" "$laPass" )"
+    #retrievedPassword="$( decryptString "$previousPassword" "$laSalt" "$laPass" )"
+    retrievedPassword="$previousPassword"
 else
     scriptLogging "Could not get previous password. Try initial password for ${laUserName}."
     scriptLogging "Try to use initial password for ${laUserName}: $initialEncryptedPassForLadminUser (encrypted)."
