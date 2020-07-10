@@ -49,7 +49,7 @@ Create Jamf API User
 - Parameter 11: Salt & Passphrase for decrypt LAPS user's initial password.  (format:: salt:passphrase)
 
 ## Log Location
-You will find this script log as `/Library/Logs/techsupport/Jamf_LAPS.YYYYMMDD.log`.
+You will find this script log as `/Library/Logs/TechSupport/Jamf_LAPS.YYYYMMDD.log`.
 
 ## Admintools
 ### DecryptString.sh

@@ -51,3 +51,4 @@ fi
 
 echo "$EncryptedString" | /usr/bin/openssl enc -aes256 -d -a -A -S "$Salt" -k "$PassPhrase"
 exit "${PIPESTATUS[1]}"
+
