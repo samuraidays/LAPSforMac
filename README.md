@@ -9,6 +9,7 @@ macOS_LAPS.sh randomly changes the password of admin account of macOS computer a
 - Every macOS computer has same initial password when it enrolled.
 
 ## Jamf Computer Extension Attribute
+Create Jamf Computer Extension Attribute
 
     Display Name: {extAttName}
     Description: This attribute will display the current Local Admin Password of the device.
@@ -20,6 +21,7 @@ macOS_LAPS.sh randomly changes the password of admin account of macOS computer a
 *Notes: The field is editable to allow for troubleshooting or manually overriding the password.*
 
 ## Jamf API User
+Create Jamf API User
 
     Username: {APIusername}
     Access Level: Full Access
@@ -47,7 +49,7 @@ macOS_LAPS.sh randomly changes the password of admin account of macOS computer a
 - Parameter 11: Salt & Passphrase for decrypt LAPS user's initial password.  (format:: salt:passphrase)
 
 ## Log Location
-You will find this script log as `/Library/Logs/Jamf_LAPS.YYYYMMDD.log`.
+You will find this script log as `/Library/Logs/techsupport/Jamf_LAPS.YYYYMMDD.log`.
 
 ## Admintools
 ### DecryptString.sh
