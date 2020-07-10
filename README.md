@@ -1,6 +1,8 @@
 # LAPSforMac
 Local Administrator Password Solution for Mac
 
+This is the unencrypted version
+
 ## Purpose
 macOS_LAPS.sh randomly changes the password of admin account of macOS computer and updates the inventory record of the macOS computer. You can securely manage the administrator password of the macOS computers being managed.
 
