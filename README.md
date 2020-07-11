@@ -48,7 +48,7 @@ Create Jamf API User
 - Parameter  8: Extend Attribute Name which stores encrypted password string.
 - Parameter  9: Salt & Passphrase for decrypt API user password. (format:: salt:passphrase)
 - Parameter 10: Salt & Passphrase for encrypt/decrypt Local Administrator User password.  (format:: salt:passphrase)
-- Parameter 11: Salt & Passphrase for decrypt LAPS user's initial password.  (format:: salt:passphrase)
+- Parameter 11: ブランク
 
 ## Log Location
 You will find this script log as `/Library/Logs/TechSupport/Jamf_LAPS.YYYYMMDD.log`.
