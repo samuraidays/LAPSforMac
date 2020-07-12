@@ -51,7 +51,7 @@ Create Jamf API User
 - Parameter 11: ブランク
 
 ## PKG
-mv LAPSforMac-PKG/lapsForMac.plist /Library/LaunchDaemon/
+mv LAPSforMac-PKG/lapsForMac.plist /Library/LaunchDaemon/  
 mv LAPSforMac-PKG/call-jamf-policy-laps.sh /Library/Scripts/
 
 Add the two files above to jamf composer, and add the postinstall file.
