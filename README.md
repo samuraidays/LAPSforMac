@@ -1,10 +1,10 @@
 # LAPSforMac
 Local Administrator Password Solution for Mac
-
 This is the unencrypted version
 
 ## Purpose
 macOS_LAPS.sh randomly changes the password of admin account of macOS computer and updates the inventory record of the macOS computer. You can securely manage the administrator password of the macOS computers being managed.
+It also executes them periodically and automatically makes changes to passwords.
 
 ## Requirement
 - macOS 10.14 or later.
@@ -49,6 +49,13 @@ Create Jamf API User
 - Parameter  9: Salt & Passphrase for decrypt API user password. (format:: salt:passphrase)
 - Parameter 10: Salt & Passphrase for encrypt/decrypt Local Administrator User password.  (format:: salt:passphrase)
 - Parameter 11: ブランク
+
+## PKG
+mv LAPSforMac-PKG/lapsForMac.plist /Library/LaunchDaemon/
+mv LAPSforMac-PKG/call-jamf-policy-laps.sh /Library/Scripts/
+
+Add the two files above to jamf composer, and add the postinstall file.
+Create a pkg.
 
 ## Log Location
 You will find this script log as `/Library/Logs/TechSupport/Jamf_LAPS.YYYYMMDD.log`.
